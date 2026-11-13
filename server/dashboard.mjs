@@ -25,6 +25,7 @@ const categories = {
   territory_government_requested: 'guild', territory_entry_requested: 'guild',
   operator_action: 'management',
   party_help_requested: 'combat', party_help_started: 'combat', party_help_finished: 'combat',
+  typhoon_plan_selected: 'decision', typhoon_plan_applied: 'decision', typhoon_plan_unavailable: 'decision',
 };
 const keyPattern = /^[a-f0-9]{64}$/;
 const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
@@ -46,6 +47,9 @@ export function publicBot(id, raw, state) {
     hits: count(s.hits), kills: count(s.kills), retries: count(s.retries),
     target: label(s.huntTargetId), lastEvent: label(s.lastEvent),
     mission: label(s.mission?.mission), reason: label(s.mission?.reason),
+    plan: s.plan ? { source: label(s.plan.source), state: label(s.plan.state),
+      reason: typeof s.plan.reason === 'string' ? s.plan.reason.slice(0, 180) : null,
+      posture: label(s.plan.posture), appliedAt: count(s.plan.appliedAt) } : null,
     camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
     following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),

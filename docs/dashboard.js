@@ -18,6 +18,7 @@ const stateNames = {
   travelling: 'กำลังเดินทาง', ready: 'พร้อม', pending: 'กำลังดำเนินการ', checking: 'กำลังตรวจ',
   level_goal: 'เป้าหมายเลเวล', user_order: 'คำสั่งเดินหรือช่วยทีม', continue_commitment: 'ทำงานเดิมต่อ',
   weapon_upgrade_affordable: 'หาอุปกรณ์สำหรับตีบวก',
+  typhoon_plan: 'แผนจาก Typhoon', hunt: 'ล่า', search: 'สำรวจ', recover: 'พักฟื้น',
   ritual_village: 'หมู่บ้านพิธีกรรม', naga_cavern: 'ถ้ำนาค', hex_ridge: 'ดงอาคมบนเขา', drowned_marsh: 'บึงพราย',
   mantra_capital: 'เวียงมนตรา', forbidden_forest: 'ป่าต้องห้าม', lotus_basin: 'ลุ่มบัว',
   wp_twins_5: 'ดาบคู่ป่าลึก', wp_twins_1: 'ดาบคู่ลานฝึก', use_herbal_1: 'ยาเลือด', use_mana_1: 'ยามานา',
@@ -34,6 +35,7 @@ const eventNames = {
   territory_government_requested: 'ดำเนินงานเมือง', territory_entry_requested: 'เข้าพื้นที่กิลด์',
   operator_action: 'คำสั่งจากแดชบอร์ด',
   party_help_requested: 'ได้รับคำขอให้ช่วยตี', party_help_started: 'เริ่มช่วยตามคำขอ', party_help_finished: 'จบการช่วย',
+  typhoon_plan_selected: 'Typhoon เลือกแผน', typhoon_plan_applied: 'เริ่มใช้แผน Typhoon', typhoon_plan_unavailable: 'ใช้แผนสำรอง',
 };
 const actions = {
   restart: ['รีสตาร์ต', 'บอตจะออกจากเกมชั่วคราว แล้วกลับเข้าเกมด้วยตัวละครเดิม'],
@@ -163,6 +165,10 @@ function updateCard(bot) {
       ['ประกาศขาย', display(bot.merchant.open) + ' รายการ']);
   }
   rows.push(['ทอง', display(bot.gold)]);
+  if (bot.plan?.source === 'typhoon') rows.push([
+    bot.plan.appliedAt ? 'แผน Typhoon' : 'แผนที่เสนอ', display(bot.plan.reason),
+  ]);
+  else if (bot.plan?.state === 'fallback') rows.push(['แผน', 'ใช้กติกาสำรอง']);
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
     const offline = bot.state === 'offline';
