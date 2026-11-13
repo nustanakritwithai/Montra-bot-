@@ -1,6 +1,6 @@
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
-import { open, readFile } from 'node:fs/promises';
+import { appendFile, open, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -66,7 +66,7 @@ export async function recentEvents(file, bot) {
     const { size } = await handle.stat();
     const buffer = Buffer.alloc(Math.min(size, 98_304));
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, size - buffer.length);
-    const lines = buffer.subarray(0, bytesRead).toString('utf8').split('\n');
+    const lines = buffer.subarray(0, bytesRead).toString('utf8').replace(/^\uFEFF/, '').split('\n');
     if (size > buffer.length) lines.shift();
     const result = [];
     for (const line of lines.reverse()) {
@@ -250,7 +250,9 @@ export function dashboardServer({ root, key, origin, auditLog, run = execute, re
       try {
         const state = await run(root, command);
         snapshotAt = 0;
-        console.log(JSON.stringify({ time: new Date().toISOString(), event: 'operator_action', bot: command.bot, action: command.action, state }));
+        const record = JSON.stringify({ time: new Date().toISOString(), event: 'operator_action', bot: command.bot, action: command.action, state });
+        if (auditLog) await appendFile(auditLog, record + '\n').catch(error => console.error('Dashboard audit write failed', error.code));
+        console.log(record);
         return send(200, { state });
       } finally { running = false; }
     } catch (error) {
