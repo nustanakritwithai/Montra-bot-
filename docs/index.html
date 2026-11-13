@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="referrer" content="no-referrer">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; connect-src https://montra.157-85-96-139.sslip.io; img-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>ศูนย์ควบคุมบอต · Montra</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Kantumruy+Pro:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap">
+  <link rel="stylesheet" href="./styles.css">
+  <script type="module" src="./dashboard.js"></script>
+</head>
+<body>
+  <header class="top">
+    <div class="frame top-inner">
+      <a class="brand" href="./" aria-label="หน้าหลัก Montra Bot"><span class="brand-mark" aria-hidden="true">M</span><span>MONTRA <b>BOT</b></span></a>
+      <div class="top-actions">
+        <span id="connection" class="pill" role="status">ยังไม่เชื่อมต่อ</span>
+        <button id="lock" type="button" class="quiet" hidden>ล็อก</button>
+      </div>
+    </div>
+  </header>
+  <main class="frame">
+    <section class="page-heading">
+      <div><h1>ศูนย์ควบคุมบอต</h1><p>ดูสถานะและพฤติกรรมของบอตในเกม Montra</p></div>
+      <button id="refresh" type="button" class="quiet" hidden>อัปเดตตอนนี้</button>
+    </section>
+    <section id="locked" class="login panel" aria-labelledby="login-title">
+      <h2 id="login-title">เชื่อมต่อกับ VPS</h2>
+      <p>กรอกคีย์แดชบอร์ดเพื่อดูข้อมูลสดและส่งคำสั่งไปยังบอต</p>
+      <form id="login">
+        <label for="key">คีย์แดชบอร์ด</label>
+        <div class="login-input"><input id="key" type="password" name="key" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" placeholder="คีย์ 64 ตัวอักษร"><button id="unlock" type="submit" class="primary">เชื่อมต่อ</button></div>
+      </form>
+    </section>
+    <p id="notice" class="notice" role="status" hidden></p>
+    <div id="dashboard" hidden>
+      <section class="summary" aria-label="สรุปสถานะ">
+        <div class="panel summary-cell"><span>บอตออนไลน์</span><strong id="online-count">—</strong></div>
+        <div class="panel summary-cell"><span>เซิร์ฟเวอร์เกม</span><strong id="game-state">—</strong></div>
+        <div class="panel summary-cell"><span>ปาร์ตี้เก็บเลเวล</span><strong id="party-state">—</strong><small id="party-detail"></small></div>
+        <div class="panel summary-cell"><span>ข้อมูลล่าสุด</span><strong id="updated">—</strong><small>เวลาไทย</small></div>
+      </section>
+      <section aria-labelledby="bots-title">
+        <div class="section-head"><h2 id="bots-title">บอตทั้งสามตัว</h2></div>
+        <div id="bots" class="bots"></div>
+      </section>
+      <section class="panel activity" aria-labelledby="activity-title">
+        <div class="section-head activity-head">
+          <h2 id="activity-title">พฤติกรรมล่าสุด</h2>
+          <div class="filters">
+            <label><span class="sr-only">กรองตามบอต</span><select id="bot-filter"><option value="">ทุกบอต</option><option value="first">บอตทดลอง</option><option value="second">บอตทดลอง 2</option><option value="merchant">บอตพ่อค้า</option></select></label>
+            <label><span class="sr-only">กรองตามประเภท</span><select id="category-filter"><option value="">ทุกเหตุการณ์</option><option value="decision">การตัดสินใจ</option><option value="travel">การเดินทาง</option><option value="combat">การต่อสู้</option><option value="equipment">อุปกรณ์และยา</option><option value="trade">การค้า</option><option value="guild">กิลด์</option><option value="connection">การเชื่อมต่อ</option><option value="management">คำสั่งจากแดชบอร์ด</option></select></label>
+          </div>
+        </div>
+        <ol id="events" class="events"></ol>
+        <p id="empty" class="empty" hidden>ยังไม่มีเหตุการณ์ตรงกับตัวกรอง</p>
+      </section>
+    </div>
+  </main>
+  <dialog id="action-dialog" aria-labelledby="action-title">
+    <form id="action-form" method="dialog">
+      <h2 id="action-title"></h2>
+      <p id="action-description"></p>
+      <div id="destination-fields" hidden>
+        <label>รหัสแผนที่<input name="mapId" maxlength="80" pattern="[A-Za-z0-9_\-]+" placeholder="naga_cavern"></label>
+        <div class="coordinates"><label>X<input name="x" type="number" step="any" min="-2000" max="2000"></label><label>Z<input name="z" type="number" step="any" min="-2000" max="2000"></label></div>
+      </div>
+      <div class="dialog-actions"><button id="cancel-action" type="button" class="quiet">ยกเลิก</button><button id="send-action" type="submit" class="primary">ส่งคำสั่ง</button></div>
+    </form>
+  </dialog>
+</body>
+</html>
