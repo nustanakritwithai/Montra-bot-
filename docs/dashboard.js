@@ -19,6 +19,19 @@ const stateNames = {
   level_goal: 'เป้าหมายเลเวล', user_order: 'คำสั่งเดินหรือช่วยทีม', continue_commitment: 'ทำงานเดิมต่อ',
   weapon_upgrade_affordable: 'หาอุปกรณ์สำหรับตีบวก',
   typhoon_plan: 'แผนจาก Typhoon', hunt: 'ล่า', search: 'สำรวจ', recover: 'พักฟื้น',
+  hunt_target: 'ล่ามอนสเตอร์ที่เลือก', hunt_camp: 'ล่าตามจุดเก็บเลเวล', learn_skill: 'เรียนวิชาดาบ', recover_health: 'พักฟื้นเลือด',
+  enhance_weapon: 'ตีบวกอาวุธ', govern_territory: 'ดูแลเมืองกิลด์', capture_territory: 'เข้าศึกยึดพื้นที่',
+  restock_product: 'ผลิตและเติมสินค้า', use_potion: 'ใช้ยา', buy_potion: 'ซื้อยา',
+  sell_surplus: 'ขายวัสดุส่วนเกิน', equip_best_weapon: 'เลือกอาวุธที่ดีที่สุด',
+  request_party_help: 'ขอให้ปาร์ตี้ช่วย', plant_guild_banner: 'ปักธงชัยกิลด์',
+  navigate_rrt: 'นำทาง RRT', combat_skills: 'ใช้สกิลต่อสู้', party_chat: 'คุยในปาร์ตี้',
+  assist_on_request: 'ช่วยเมื่อได้รับคำขอ', guild_membership: 'จัดการสมาชิกกิลด์', emergency_healing: 'ใช้ยาฉุกเฉิน',
+  market_price_history: 'ดูราคาตลาด', claim_finished_craft: 'รับของที่คราฟต์เสร็จ', merchant_chat: 'ตอบคำถามร้านค้า',
+  potion_used: 'ใช้ยาแล้ว', potion_purchased: 'ซื้อยาแล้ว', no_affordable_listing: 'ไม่มีของขายในงบ',
+  material_sold: 'ขายวัสดุแล้ว', equipped: 'สวมอาวุธแล้ว', already_best: 'ใช้อาวุธที่ดีที่สุดอยู่แล้ว',
+  no_eligible_weapon: 'ไม่มีอาวุธที่ใช้ได้', party_help_sent: 'ส่งข้อความขอความช่วยเหลือแล้ว',
+  guild_banner_planted: 'ปักธงแล้ว', territory_admitted: 'เกมอนุญาตให้เข้าศึกแล้ว',
+  territory_governed: 'ดูแลพื้นที่แล้ว', unavailable: 'เงื่อนไขเปลี่ยน', reply_timeout: 'เกมตอบกลับไม่ทัน',
   balanced: 'สมดุล', pressure: 'เร่งโจมตี', conserve: 'ประหยัดมานา', guard: 'เน้นป้องกัน',
   monster_defeated: 'กำจัดมอนสเตอร์แล้ว', weapon_enhanced: 'ตีบวกสำเร็จ', forge_failed: 'ตีบวกไม่สำเร็จ',
   skill_learned: 'เรียนสกิลแล้ว', item_listed: 'ลงขายแล้ว', recovered: 'ฟื้นเลือดแล้ว', timed_out: 'หมดเวลาทำแผน',
@@ -171,11 +184,17 @@ function updateCard(bot) {
   }
   rows.push(['ทอง', display(bot.gold)]);
   if (bot.plan?.source === 'typhoon') rows.push([
-    bot.plan.appliedAt ? 'แผน Typhoon' : 'แผนที่เสนอ', display(bot.plan.reason),
+    bot.plan.appliedAt ? 'แผน Typhoon' : 'แผนที่เสนอ', [bot.plan.tool, bot.plan.reason].filter(Boolean).map(display).join(' · '),
   ]);
   if (bot.plan?.step) rows.push(['ขั้นของแผน', bot.plan.step + ' / ' + bot.plan.total +
     (bot.role === 'fighter' ? ' · ' + display(bot.plan.tactic) : '')]);
   else if (bot.plan?.state === 'fallback') rows.push(['แผน', 'ใช้กติกาสำรอง']);
+  if (bot.tools) {
+    rows.push(['เครื่องมือที่พร้อม', bot.tools.ready.map(display).join(' · ') || '—']);
+    if (bot.tools.automatic.length) rows.push(['ระบบอัตโนมัติ', bot.tools.automatic.map(display).join(' · ')]);
+    const result = bot.tools.lastResult;
+    if (result?.tool && result.outcome) rows.push(['ผลล่าสุด', display(result.tool) + ' · ' + display(result.outcome)]);
+  }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
     const offline = bot.state === 'offline';
@@ -195,7 +214,7 @@ function renderEvents() {
     const item = node('li');
     const time = node('time', eventDate.format(new Date(row.time)));
     time.dateTime = row.time;
-    const details = [row.map, row.item, row.mission, row.goal, row.reason, row.destination ?? row.target].filter(Boolean).map(display);
+    const details = [row.tool, row.map, row.item, row.mission, row.goal, row.reason, row.destination ?? row.target].filter(Boolean).map(display);
     if (row.type === 'operator_action' && Object.hasOwn(actions, row.action)) details.push(actions[row.action][0]);
     if (row.type === 'typhoon_plan_outcome' && row.outcome) details.push(display(row.outcome));
     if (row.rank !== null) details.push('+' + row.rank);

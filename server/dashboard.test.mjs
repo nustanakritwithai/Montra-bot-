@@ -25,10 +25,13 @@ test('event feed exposes only approved structured fields', async () => {
       { event: 'ai_decision', time: '2026-11-14T01:00:00Z', goal: 'HUNT', prompt: 'private' },
       { event: 'chat', time: '2026-11-14T01:00:01Z', message: 'private' },
       { event: 'forge_result', time: '2026-11-14T01:00:02Z', itemId: 'wp_twins_5', rank: 2, cost: 33, requestId: 'private' },
+      { event: 'typhoon_plan_outcome', time: '2026-11-14T01:00:03Z', tool: 'use_potion', outcome: 'potion_used', payload: 'private' },
     ].map(value => JSON.stringify(value)).join('\n'));
     const result = await recentEvents(file, 'first');
-    assert.deepEqual(result.map(event => event.type), ['forge_result', 'ai_decision']);
-    assert.equal(result[0].price, 33);
+    assert.deepEqual(result.map(event => event.type), ['typhoon_plan_outcome', 'forge_result', 'ai_decision']);
+    assert.equal(result[0].tool, 'use_potion');
+    assert.equal(result[0].outcome, 'potion_used');
+    assert.equal(result[1].price, 33);
     assert(!JSON.stringify(result).includes('private'));
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
@@ -42,7 +45,10 @@ test('overview, CORS and commands are authenticated, filtered and serialized', a
   const hold = new Promise(resolve => { allowFinish = resolve; });
   const server = dashboardServer({ root: '.', key, origin, readEvents: async () => [],
     readStatus: async port => port === 34781
-      ? { raw: { service: 'montra-bot-v1', state: 'online', level: 61, sessionId: 'private', authentication: { token: 'private' } } }
+      ? { raw: { service: 'montra-bot-v1', state: 'online', level: 61, sessionId: 'private',
+        authentication: { token: 'private' }, plan: { tool: 'hunt_camp' },
+        agentTools: { ready: { hunt_camp: 2, 'private/': 1 }, automatic: ['navigate_rrt'],
+          lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10, payload: 'private' } } } }
       : { state: 'offline' },
     run: async (_root, command) => { calls.push(command); await hold; return 'online'; },
   });
@@ -61,6 +67,9 @@ test('overview, CORS and commands are authenticated, filtered and serialized', a
     const snapshot = await response.json();
     assert.equal(snapshot.bots.length, 3);
     assert.equal(snapshot.bots[0].level, 61);
+    assert.equal(snapshot.bots[0].plan.tool, 'hunt_camp');
+    assert.deepEqual(snapshot.bots[0].tools, { ready: ['hunt_camp'], automatic: ['navigate_rrt'],
+      lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10 } });
     assert(!JSON.stringify(snapshot).includes('private'));
     assert.equal((await post({ bot: 'first', action: 'stop' })).status, 400);
     const pending = post({ bot: 'first', action: 'restart' });

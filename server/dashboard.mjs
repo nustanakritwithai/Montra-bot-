@@ -33,6 +33,7 @@ const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
 const digest = text => createHash('sha256').update(text).digest();
 const count = value => Number.isFinite(value) ? value : null;
 const label = value => typeof value === 'string' && gameId.test(value) ? value : null;
+const toolLabels = value => Array.isArray(value) ? value.slice(0, 20).map(label).filter(Boolean) : [];
 const text = value => typeof value === 'string' ? value.slice(0, 90) : null;
 const loopback = port => 'http://127.0.0.1:' + port;
 const runningStates = new Set(['online', 'starting', 'reconnecting', 'stopping', 'failed']);
@@ -48,12 +49,18 @@ export function publicBot(id, raw, state) {
     hits: count(s.hits), kills: count(s.kills), retries: count(s.retries),
     target: label(s.huntTargetId), lastEvent: label(s.lastEvent),
     mission: label(s.mission?.mission), reason: label(s.mission?.reason),
-    plan: s.plan ? { source: label(s.plan.source), state: label(s.plan.state),
+    plan: s.plan ? { source: label(s.plan.source), state: label(s.plan.state), tool: label(s.plan.tool),
       reason: typeof s.plan.reason === 'string' ? s.plan.reason.slice(0, 180) : null,
       posture: label(s.plan.posture), tactic: label(s.plan.tactic), appliedAt: count(s.plan.appliedAt),
       step: count(s.plan.step), total: count(s.plan.total),
       queued: Array.isArray(s.plan.queued) ? s.plan.queued.slice(0, 2)
         .map(entry => typeof entry?.option === 'string' ? entry.option.slice(0, 100) : null).filter(Boolean) : [] } : null,
+    tools: s.agentTools ? {
+      ready: toolLabels(Object.keys(s.agentTools.ready ?? {})),
+      automatic: toolLabels(s.agentTools.automatic),
+      lastResult: s.agentTools.lastResult ? { tool: label(s.agentTools.lastResult.tool),
+        outcome: label(s.agentTools.lastResult.outcome), at: count(s.agentTools.lastResult.at) } : null,
+    } : null,
     camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
     following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),
@@ -90,7 +97,7 @@ export async function recentEvents(file, bot) {
         map: label(row.map ?? row.mapId), item: label(row.itemId ?? row.item), goal: label(row.goal),
         mission: label(row.mission), reason: row.event === 'mission_selected' ? label(row.reason) : null,
         target: label(row.target), destination: label(row.destination), action: label(row.action),
-        outcome: label(row.outcome), step: count(row.step),
+        tool: label(row.tool), outcome: label(row.outcome), step: count(row.step),
         rank: count(row.rank), quantity: count(row.quantity ?? row.stock),
         price: count(row.price ?? row.cost), success: typeof row.success === 'boolean' ? row.success : null });
     }
