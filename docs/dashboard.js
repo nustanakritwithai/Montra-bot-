@@ -144,7 +144,7 @@ function updateCard(bot) {
     bot.routeRetryAt > Date.parse(data.time) && bot.goal === 'REST' ? 'รอลองหาเส้นทางใหม่' :
     bot.assistState === 'recovering' && bot.hp < bot.maxHp ? 'พักฟื้นพลังชีวิต' :
     bot.assistState === 'waiting' ? 'รอตัวนำเลือกเป้าหมาย' :
-    bot.assistState === 'following' ? 'เดินตามตัวนำปาร์ตี้' :
+    ['following', 'travelling', 'waiting_for_portal', 'arrived'].includes(bot.assistState) ? 'เดินตามตัวนำปาร์ตี้' :
     bot.assistState === 'fighting' ? 'ช่วยปาร์ตี้ต่อสู้' : display(bot.goal);
   const rows = [['พฤติกรรม', activity], ['แผนที่', display(bot.map)],
     ['ตำแหน่ง X / Z', bot.x === null ? '—' : display(bot.x) + ' / ' + display(bot.z)]];
