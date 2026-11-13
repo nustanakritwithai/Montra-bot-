@@ -26,14 +26,15 @@ const categories = {
   operator_action: 'management',
   party_help_requested: 'combat', party_help_started: 'combat', party_help_finished: 'combat',
   typhoon_plan_selected: 'decision', typhoon_plan_applied: 'decision', typhoon_plan_unavailable: 'decision',
-  typhoon_plan_outcome: 'decision',
+  typhoon_plan_outcome: 'decision', typhoon_tool_result: 'decision', nutrition_result: 'decision',
 };
 const keyPattern = /^[a-f0-9]{64}$/;
 const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
 const digest = text => createHash('sha256').update(text).digest();
 const count = value => Number.isFinite(value) ? value : null;
 const label = value => typeof value === 'string' && gameId.test(value) ? value : null;
-const toolLabels = value => Array.isArray(value) ? value.slice(0, 20).map(label).filter(Boolean) : [];
+const toolLabels = value => Array.isArray(value) ? value.slice(0, 40).map(label).filter(Boolean) : [];
+const toolResult = result => result ? { tool: label(result.tool), outcome: label(result.outcome), at: count(result.at) } : null;
 const text = value => typeof value === 'string' ? value.slice(0, 90) : null;
 const loopback = port => 'http://127.0.0.1:' + port;
 const runningStates = new Set(['online', 'starting', 'reconnecting', 'stopping', 'failed']);
@@ -58,9 +59,11 @@ export function publicBot(id, raw, state) {
     tools: s.agentTools ? {
       ready: toolLabels(Object.keys(s.agentTools.ready ?? {})),
       automatic: toolLabels(s.agentTools.automatic),
-      lastResult: s.agentTools.lastResult ? { tool: label(s.agentTools.lastResult.tool),
-        outcome: label(s.agentTools.lastResult.outcome), at: count(s.agentTools.lastResult.at) } : null,
+      lastResult: toolResult(s.agentTools.lastResult),
+      ...(s.agentTools.lastSideResult ? { lastSideResult: toolResult(s.agentTools.lastSideResult) } : {}),
     } : null,
+    nutrition: s.nutrition ? { food: count(s.nutrition.food), water: count(s.nutrition.water),
+      collected: count(s.nutrition.collected), consumed: count(s.nutrition.consumed), cooked: count(s.nutrition.cooked) } : null,
     camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
     following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),

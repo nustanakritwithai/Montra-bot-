@@ -31,6 +31,11 @@ const stateNames = {
   material_sold: 'ขายวัสดุแล้ว', equipped: 'สวมอาวุธแล้ว', already_best: 'ใช้อาวุธที่ดีที่สุดอยู่แล้ว',
   no_eligible_weapon: 'ไม่มีอาวุธที่ใช้ได้', party_help_sent: 'ส่งข้อความขอความช่วยเหลือแล้ว',
   guild_banner_planted: 'ปักธงแล้ว', territory_admitted: 'เกมอนุญาตให้เข้าศึกแล้ว',
+  md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
+  inspect_inventory: 'ดูกระเป๋า', inspect_character: 'ดูสเตตัส', inspect_needs: 'ดูความหิวและกระหาย',
+  inspect_resources: 'ดูทรัพยากร', inspect_home: 'ดูบ้านและสวน', inspect_city_trade: 'ดูตลาดและสัญญาค้าเมือง',
+  consume_nutrition: 'กินหรือดื่ม', collect_water: 'ตักน้ำ', cook_basic_meal: 'ทำต้มปลาช่อน', visit_village_well: 'เดินทางไปลานตักน้ำ',
+  ok: 'สำเร็จ', nutrition_consumed: 'กินหรือดื่มแล้ว', water_collected: 'ตักน้ำแล้ว', meal_cooked: 'ทำอาหารแล้ว', well_reached: 'ถึงลานตักน้ำ',
   territory_governed: 'ดูแลพื้นที่แล้ว', unavailable: 'เงื่อนไขเปลี่ยน', reply_timeout: 'เกมตอบกลับไม่ทัน',
   balanced: 'สมดุล', pressure: 'เร่งโจมตี', conserve: 'ประหยัดมานา', guard: 'เน้นป้องกัน',
   monster_defeated: 'กำจัดมอนสเตอร์แล้ว', weapon_enhanced: 'ตีบวกสำเร็จ', forge_failed: 'ตีบวกไม่สำเร็จ',
@@ -53,7 +58,7 @@ const eventNames = {
   operator_action: 'คำสั่งจากแดชบอร์ด',
   party_help_requested: 'ได้รับคำขอให้ช่วยตี', party_help_started: 'เริ่มช่วยตามคำขอ', party_help_finished: 'จบการช่วย',
   typhoon_plan_selected: 'Typhoon เลือกแผน', typhoon_plan_applied: 'เริ่มใช้แผน Typhoon', typhoon_plan_unavailable: 'ใช้แผนสำรอง',
-  typhoon_plan_outcome: 'ผลของแผน Typhoon',
+  typhoon_plan_outcome: 'ผลของแผน Typhoon', typhoon_tool_result: 'ผลเรียกเครื่องมือ Typhoon', nutrition_result: 'ผลอาหารและน้ำ',
 };
 const actions = {
   restart: ['รีสตาร์ต', 'บอตจะออกจากเกมชั่วคราว แล้วกลับเข้าเกมด้วยตัวละครเดิม'],
@@ -183,6 +188,7 @@ function updateCard(bot) {
       ['ประกาศขาย', display(bot.merchant.open) + ' รายการ']);
   }
   rows.push(['ทอง', display(bot.gold)]);
+  if (bot.nutrition?.food != null) rows.push(['อาหาร / น้ำ', display(bot.nutrition.food) + ' / ' + display(bot.nutrition.water)]);
   if (bot.plan?.source === 'typhoon') rows.push([
     bot.plan.appliedAt ? 'แผน Typhoon' : 'แผนที่เสนอ', [bot.plan.tool, bot.plan.reason].filter(Boolean).map(display).join(' · '),
   ]);
@@ -194,6 +200,8 @@ function updateCard(bot) {
     if (bot.tools.automatic.length) rows.push(['ระบบอัตโนมัติ', bot.tools.automatic.map(display).join(' · ')]);
     const result = bot.tools.lastResult;
     if (result?.tool && result.outcome) rows.push(['ผลล่าสุด', display(result.tool) + ' · ' + display(result.outcome)]);
+    const side = bot.tools.lastSideResult;
+    if (side?.tool && side.outcome) rows.push(['ผลอ่านข้อมูลหรือไฟล์', display(side.tool) + ' · ' + display(side.outcome)]);
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
@@ -216,7 +224,7 @@ function renderEvents() {
     time.dateTime = row.time;
     const details = [row.tool, row.map, row.item, row.mission, row.goal, row.reason, row.destination ?? row.target].filter(Boolean).map(display);
     if (row.type === 'operator_action' && Object.hasOwn(actions, row.action)) details.push(actions[row.action][0]);
-    if (row.type === 'typhoon_plan_outcome' && row.outcome) details.push(display(row.outcome));
+    if (row.outcome) details.push(display(row.outcome));
     if (row.rank !== null) details.push('+' + row.rank);
     if (row.quantity !== null) details.push('×' + row.quantity);
     if (row.price !== null) details.push(display(row.price) + ' ทอง');
