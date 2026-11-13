@@ -24,6 +24,7 @@ const categories = {
   merchant_crafted: 'trade', merchant_listed: 'trade', merchant_sync_after_timeout: 'trade',
   territory_government_requested: 'guild', territory_entry_requested: 'guild',
   operator_action: 'management',
+  party_help_requested: 'combat', party_help_started: 'combat', party_help_finished: 'combat',
 };
 const keyPattern = /^[a-f0-9]{64}$/;
 const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
@@ -47,7 +48,7 @@ export function publicBot(id, raw, state) {
     mission: label(s.mission?.mission), reason: label(s.mission?.reason),
     camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
-    following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state),
+    following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),
     routeRetryAt: count(s.routeRetryAt), guildRole: label(s.guild?.role),
     chatSent: count(s.chat?.sent), chatReceived: count(s.chat?.received),
     weapon: label(s.sword?.equipped ?? s.weaponSelection?.weaponId),

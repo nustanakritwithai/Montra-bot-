@@ -6,7 +6,8 @@ const eventDate = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', d
 const stateNames = {
   online: 'ออนไลน์', offline: 'ออฟไลน์', unavailable: 'อ่านสถานะไม่ได้', starting: 'กำลังเปิด',
   stopping: 'กำลังหยุด', reconnecting: 'กำลังเชื่อมใหม่', failed: 'ขัดข้อง', stale: 'ข้อมูลล่าสุดที่อ่านได้',
-  training_together: 'กำลังเก็บเลเวล', forming_party: 'กำลังตั้งปาร์ตี้', joining_same_room: 'กำลังเข้าห้องเดียวกัน',
+  training_together: 'กำลังเก็บเลเวล', independent_training: 'ล่าอิสระ · ช่วยเมื่อถูกเรียก',
+  forming_party: 'กำลังตั้งปาร์ตี้', joining_same_room: 'กำลังเข้าห้องเดียวกัน',
   starting_bots: 'กำลังเปิดบอต', waiting_for_bots: 'รอบอต', other_party: 'มีสมาชิกปาร์ตี้อื่น',
   complete: 'ถึงเป้าหมายแล้ว', retrying: 'กำลังลองใหม่',
   HUNT: 'ล่ามอนสเตอร์', SEARCH: 'สำรวจ', REST: 'พัก', MERCHANT: 'ค้าขาย',
@@ -32,6 +33,7 @@ const eventNames = {
   merchant_crafted: 'คราฟต์สินค้า', merchant_listed: 'ลงขายสินค้า', merchant_sync_after_timeout: 'ซิงก์รายการค้าใหม่',
   territory_government_requested: 'ดำเนินงานเมือง', territory_entry_requested: 'เข้าพื้นที่กิลด์',
   operator_action: 'คำสั่งจากแดชบอร์ด',
+  party_help_requested: 'ได้รับคำขอให้ช่วยตี', party_help_started: 'เริ่มช่วยตามคำขอ', party_help_finished: 'จบการช่วย',
 };
 const actions = {
   restart: ['รีสตาร์ต', 'บอตจะออกจากเกมชั่วคราว แล้วกลับเข้าเกมด้วยตัวละครเดิม'],
@@ -144,8 +146,8 @@ function updateCard(bot) {
     bot.routeRetryAt > Date.parse(data.time) && bot.goal === 'REST' ? 'รอลองหาเส้นทางใหม่' :
     bot.assistState === 'recovering' && bot.hp < bot.maxHp ? 'พักฟื้นพลังชีวิต' :
     bot.assistState === 'waiting' ? 'รอตัวนำเลือกเป้าหมาย' :
-    ['following', 'travelling', 'waiting_for_portal', 'arrived'].includes(bot.assistState) ? 'เดินตามตัวนำปาร์ตี้' :
-    bot.assistState === 'fighting' ? 'ช่วยปาร์ตี้ต่อสู้' : display(bot.goal);
+    ['following', 'travelling', 'waiting_for_portal', 'arrived'].includes(bot.assistState) ? (bot.assistSource === 'party_request' ? 'กำลังไปช่วยตามคำขอ' : 'เดินตามตัวนำปาร์ตี้') :
+    bot.assistState === 'fighting' ? (bot.assistSource === 'party_request' ? 'ช่วยต่อสู้ตามคำขอ' : 'ช่วยปาร์ตี้ต่อสู้') : display(bot.goal);
   const rows = [['พฤติกรรม', activity], ['แผนที่', display(bot.map)],
     ['ตำแหน่ง X / Z', bot.x === null ? '—' : display(bot.x) + ' / ' + display(bot.z)]];
   if (bot.role === 'fighter') {
