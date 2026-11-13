@@ -140,7 +140,13 @@ function updateCard(bot) {
   card.meter.max = bot.maxHp || 1;
   card.meter.value = bot.hp ?? 0;
   card.healthText.textContent = display(bot.hp) + ' / ' + display(bot.maxHp) + ' HP';
-  const rows = [['พฤติกรรม', display(bot.goal)], ['แผนที่', display(bot.map)],
+  const activity = bot.state !== 'online' ? '—' :
+    bot.routeRetryAt > Date.parse(data.time) && bot.goal === 'REST' ? 'รอลองหาเส้นทางใหม่' :
+    bot.assistState === 'recovering' && bot.hp < bot.maxHp ? 'พักฟื้นพลังชีวิต' :
+    bot.assistState === 'waiting' ? 'รอตัวนำเลือกเป้าหมาย' :
+    bot.assistState === 'following' ? 'เดินตามตัวนำปาร์ตี้' :
+    bot.assistState === 'fighting' ? 'ช่วยปาร์ตี้ต่อสู้' : display(bot.goal);
+  const rows = [['พฤติกรรม', activity], ['แผนที่', display(bot.map)],
     ['ตำแหน่ง X / Z', bot.x === null ? '—' : display(bot.x) + ' / ' + display(bot.z)]];
   if (bot.role === 'fighter') {
     rows.push(['ภารกิจ', [bot.mission, bot.reason].filter(Boolean).map(display).join(' · ') || '—'],
