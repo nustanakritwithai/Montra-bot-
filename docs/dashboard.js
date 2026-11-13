@@ -19,6 +19,10 @@ const stateNames = {
   level_goal: 'เป้าหมายเลเวล', user_order: 'คำสั่งเดินหรือช่วยทีม', continue_commitment: 'ทำงานเดิมต่อ',
   weapon_upgrade_affordable: 'หาอุปกรณ์สำหรับตีบวก',
   typhoon_plan: 'แผนจาก Typhoon', hunt: 'ล่า', search: 'สำรวจ', recover: 'พักฟื้น',
+  balanced: 'สมดุล', pressure: 'เร่งโจมตี', conserve: 'ประหยัดมานา', guard: 'เน้นป้องกัน',
+  monster_defeated: 'กำจัดมอนสเตอร์แล้ว', weapon_enhanced: 'ตีบวกสำเร็จ', forge_failed: 'ตีบวกไม่สำเร็จ',
+  skill_learned: 'เรียนสกิลแล้ว', item_listed: 'ลงขายแล้ว', recovered: 'ฟื้นเลือดแล้ว', timed_out: 'หมดเวลาทำแผน',
+  route_unavailable: 'หาเส้นทางไม่ได้', recovery_exhausted: 'กู้เส้นทางไม่สำเร็จ',
   ritual_village: 'หมู่บ้านพิธีกรรม', naga_cavern: 'ถ้ำนาค', hex_ridge: 'ดงอาคมบนเขา', drowned_marsh: 'บึงพราย',
   mantra_capital: 'เวียงมนตรา', forbidden_forest: 'ป่าต้องห้าม', lotus_basin: 'ลุ่มบัว',
   wp_twins_5: 'ดาบคู่ป่าลึก', wp_twins_1: 'ดาบคู่ลานฝึก', use_herbal_1: 'ยาเลือด', use_mana_1: 'ยามานา',
@@ -36,6 +40,7 @@ const eventNames = {
   operator_action: 'คำสั่งจากแดชบอร์ด',
   party_help_requested: 'ได้รับคำขอให้ช่วยตี', party_help_started: 'เริ่มช่วยตามคำขอ', party_help_finished: 'จบการช่วย',
   typhoon_plan_selected: 'Typhoon เลือกแผน', typhoon_plan_applied: 'เริ่มใช้แผน Typhoon', typhoon_plan_unavailable: 'ใช้แผนสำรอง',
+  typhoon_plan_outcome: 'ผลของแผน Typhoon',
 };
 const actions = {
   restart: ['รีสตาร์ต', 'บอตจะออกจากเกมชั่วคราว แล้วกลับเข้าเกมด้วยตัวละครเดิม'],
@@ -168,6 +173,8 @@ function updateCard(bot) {
   if (bot.plan?.source === 'typhoon') rows.push([
     bot.plan.appliedAt ? 'แผน Typhoon' : 'แผนที่เสนอ', display(bot.plan.reason),
   ]);
+  if (bot.plan?.step) rows.push(['ขั้นของแผน', bot.plan.step + ' / ' + bot.plan.total +
+    (bot.role === 'fighter' ? ' · ' + display(bot.plan.tactic) : '')]);
   else if (bot.plan?.state === 'fallback') rows.push(['แผน', 'ใช้กติกาสำรอง']);
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
@@ -190,6 +197,7 @@ function renderEvents() {
     time.dateTime = row.time;
     const details = [row.map, row.item, row.mission, row.goal, row.reason, row.destination ?? row.target].filter(Boolean).map(display);
     if (row.type === 'operator_action' && Object.hasOwn(actions, row.action)) details.push(actions[row.action][0]);
+    if (row.type === 'typhoon_plan_outcome' && row.outcome) details.push(display(row.outcome));
     if (row.rank !== null) details.push('+' + row.rank);
     if (row.quantity !== null) details.push('×' + row.quantity);
     if (row.price !== null) details.push(display(row.price) + ' ทอง');

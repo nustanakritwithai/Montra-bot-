@@ -26,6 +26,7 @@ const categories = {
   operator_action: 'management',
   party_help_requested: 'combat', party_help_started: 'combat', party_help_finished: 'combat',
   typhoon_plan_selected: 'decision', typhoon_plan_applied: 'decision', typhoon_plan_unavailable: 'decision',
+  typhoon_plan_outcome: 'decision',
 };
 const keyPattern = /^[a-f0-9]{64}$/;
 const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
@@ -49,7 +50,10 @@ export function publicBot(id, raw, state) {
     mission: label(s.mission?.mission), reason: label(s.mission?.reason),
     plan: s.plan ? { source: label(s.plan.source), state: label(s.plan.state),
       reason: typeof s.plan.reason === 'string' ? s.plan.reason.slice(0, 180) : null,
-      posture: label(s.plan.posture), appliedAt: count(s.plan.appliedAt) } : null,
+      posture: label(s.plan.posture), tactic: label(s.plan.tactic), appliedAt: count(s.plan.appliedAt),
+      step: count(s.plan.step), total: count(s.plan.total),
+      queued: Array.isArray(s.plan.queued) ? s.plan.queued.slice(0, 2)
+        .map(entry => typeof entry?.option === 'string' ? entry.option.slice(0, 100) : null).filter(Boolean) : [] } : null,
     camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
     following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),
@@ -86,6 +90,7 @@ export async function recentEvents(file, bot) {
         map: label(row.map ?? row.mapId), item: label(row.itemId ?? row.item), goal: label(row.goal),
         mission: label(row.mission), reason: row.event === 'mission_selected' ? label(row.reason) : null,
         target: label(row.target), destination: label(row.destination), action: label(row.action),
+        outcome: label(row.outcome), step: count(row.step),
         rank: count(row.rank), quantity: count(row.quantity ?? row.stock),
         price: count(row.price ?? row.cost), success: typeof row.success === 'boolean' ? row.success : null });
     }
