@@ -1,3 +1,5 @@
+import { campaignTargets, needsAttention, observedRouteLoop, selectGuilds, summarizeFleet } from './fleet.mjs';
+
 const endpoint = 'https://montra.157-85-96-139.sslip.io/bot-admin-api';
 const $ = id => document.getElementById(id);
 const number = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 1 });
@@ -8,7 +10,7 @@ const stateNames = {
   protected: 'คุ้มครอง', secured: 'ครองเมือง', battle: 'กำลังรบ', open: 'เปิดชิง', finished: 'จบศึก',
   attack: 'ฝ่ายบุก', defend: 'ฝ่ายตั้งรับ', guild_war: 'ศึกกิลด์', idle: 'พักภารกิจ', separate_roles: 'ตัวควบคุมบอตพร้อม',
   moon_pass: 'ด่านจันทร์', river_watch: 'ป้อมท่าปากชล', sam_lan_estuary: 'ปากน้ำสามลาน', tri_wiang_castle: 'ปราสาทสามเวียง',
-  asura_peak: 'ยอดเขาอสูร', spirit_rift: 'รอยแยกวิญญาณ', bound_temple: 'วัดร้างพันธนาการ', bamboo_frontier: 'ดงไผ่',
+  asura_peak: 'เขาอสุรา', spirit_rift: 'รอยแยกวิญญาณ', bound_temple: 'วัดร้างพันธนาการ', bamboo_frontier: 'ดงไผ่',
   moon_cemetery: 'ป่าช้าเงาจันทร์', fallen_city: 'เมืองอาคมล่ม', twin_neck_pass: 'ด่านสันเขาสองคอ',
   seer_buffalo: 'ควายธนู', seer_poison: 'ข้าวสารพิษ', mender_core_heal: 'พรฟื้นกาย', mender_core_circle: 'มหายันต์ฟื้นชีพ',
   shock: 'กระแทกหยุดทัพ', riposte: 'ตั้งง้าวสวน', blade_fury: 'ปลุกจิตสังหาร', blade_heavy: 'คมสังหาร',
@@ -56,19 +58,32 @@ const stateNames = {
   inspect_inventory: 'ดูกระเป๋า', inspect_character: 'ดูสเตตัส', inspect_needs: 'ดูความหิวและกระหาย',
   inspect_resources: 'ดูทรัพยากร', inspect_home: 'ดูบ้านและสวน', inspect_city_trade: 'ดูตลาดและสัญญาค้าเมือง',
   consume_nutrition: 'กินหรือดื่ม', collect_water: 'ตักน้ำ', cook_basic_meal: 'ทำต้มปลาช่อน', visit_village_well: 'เดินทางไปลานตักน้ำ',
+  campaign: 'มีเป้าหมายชิงเมือง', waiting_for_city: 'รอเมืองเปิดชิง', founding_guild: 'กำลังตั้งกิลด์',
+  guild_mismatch: 'สังกัดกิลด์ผิด', guild_error: 'ข้อมูลกิลด์ขัดข้อง', village_supply: 'เติมเสบียง',
+  sailing: 'เดินทางด้วยเรือ', rowing: 'กำลังพายเรือ', walking_to_dock: 'กำลังไปท่าเรือ', boarding: 'ขึ้นเรือ',
+  launching: 'ลงเรือ', taking_helm: 'เข้าประจำเรือ', water_gate: 'ผ่านทางน้ำ', landing: 'กำลังเทียบท่า',
+  finding_safe_shore: 'หาจุดขึ้นฝั่ง', anchored_no_safe_shore: 'ทอดสมอรอหาฝั่ง', returning_to_shore: 'กำลังกลับขึ้นฝั่ง',
+  boat_arrived: 'ถึงท่าเรือแล้ว', water_route_unavailable: 'ไม่มีเส้นทางน้ำ', boat_reconnect: 'เชื่อมต่อใหม่หลังเดินเรือ',
+  waiting_for_portal: 'รอผ่านประตู', portal_blocked: 'ทางเข้าประตูติดขัด', portal_cooldown: 'รอลองเข้าประตูใหม่',
+  no_map_route: 'ไม่มีเส้นทางไปแผนที่', camp_blocked: 'เข้าแคมป์ไม่ได้', waiting_for_camp: 'รอแคมป์ล่า',
+  waiting_for_prices: 'รอราคาตลาด', waiting_for_margin: 'รอสินค้าที่มีกำไร', returning_to_market: 'กำลังกลับตลาด',
+  resource_empty: 'วัตถุดิบหมด', resource_range: 'อยู่ไกลจากจุดเก็บ', craft_missing_material: 'วัตถุดิบไม่พอ',
   ok: 'สำเร็จ', nutrition_consumed: 'กินหรือดื่มแล้ว', water_collected: 'ตักน้ำแล้ว', meal_cooked: 'ทำอาหารแล้ว', well_reached: 'ถึงลานตักน้ำ',
   territory_governed: 'ดูแลพื้นที่แล้ว', unavailable: 'เงื่อนไขเปลี่ยน', reply_timeout: 'เกมตอบกลับไม่ทัน',
   balanced: 'สมดุล', pressure: 'เร่งโจมตี', conserve: 'ประหยัดมานา', guard: 'เน้นป้องกัน',
   monster_defeated: 'กำจัดมอนสเตอร์แล้ว', weapon_enhanced: 'ตีบวกสำเร็จ', forge_failed: 'ตีบวกไม่สำเร็จ',
   skill_learned: 'เรียนสกิลแล้ว', item_listed: 'ลงขายแล้ว', recovered: 'ฟื้นเลือดแล้ว', timed_out: 'หมดเวลาทำแผน',
   route_unavailable: 'หาเส้นทางไม่ได้', recovery_exhausted: 'กู้เส้นทางไม่สำเร็จ',
-  ritual_village: 'หมู่บ้านพิธีกรรม', naga_cavern: 'ถ้ำนาค', hex_ridge: 'ดงอาคมบนเขา', drowned_marsh: 'บึงพราย',
+  ritual_village: 'หมู่บ้านอาคม', naga_cavern: 'ถ้ำนาค', hex_ridge: 'ดงอาคมบนเขา', drowned_marsh: 'บึงพราย',
   mantra_capital: 'เวียงมนตรา', forbidden_forest: 'ป่าต้องห้าม', lotus_basin: 'ลุ่มบัว',
   wp_twins_5: 'ดาบคู่ป่าลึก', wp_twins_1: 'ดาบคู่ลานฝึก', use_herbal_1: 'ยาเลือด', use_mana_1: 'ยามานา',
 };
 const eventNames = {
   guild_war_joined: 'เข้าสนามรบ', profession_skill_used: 'ใช้สกิลอาชีพ', city_ownership_confirmed: 'ยึดเมืองสำเร็จ',
   merchant_level_observed: 'ตรวจเลเวลพ่อค้า', merchant_quality_improved: 'ตีบวกสินค้า',
+  merchant_map_entered: 'พ่อค้าเข้าแผนที่', merchant_portal_attempt: 'พ่อค้าเข้าประตู',
+  boat_trip_started: 'เริ่มเดินทางด้วยเรือ', boat_trip_finished: 'จบการเดินเรือ', boat_gate_crossed: 'ผ่านทางน้ำระหว่างแผนที่',
+  merchant_queued: 'ต่อคิวผลิตสินค้า', merchant_tool_harvest: 'ใช้เครื่องมือเก็บวัตถุดิบ', merchant_retry: 'ลองทำงานพ่อค้าใหม่',
   joined: 'เข้าเกม', connection_error: 'หลุดการเชื่อมต่อ', stopped: 'หยุดบอต',
   mission_selected: 'เลือกภารกิจ', ai_decision: 'AI เลือกเป้าหมาย', goal: 'เปลี่ยนพฤติกรรม',
   portal_attempt: 'เข้าประตูข้ามแผนที่', destination: 'รับคำสั่งเดิน', destination_arrived: 'ถึงจุดหมาย',
@@ -155,7 +170,7 @@ function showAction(bot, action) {
 }
 
 function detailsRows(bot) {
-const activity = bot.state !== 'online' ? '—' :
+  const activity = bot.state !== 'online' ? '—' :
     bot.routeRetryAt > Date.parse(data.time) && bot.goal === 'REST' ? 'รอลองหาเส้นทางใหม่' :
     bot.assistState === 'recovering' && bot.hp < bot.maxHp ? 'พักฟื้นพลังชีวิต' :
     bot.assistState === 'waiting' ? 'รอตัวนำเลือกเป้าหมาย' :
@@ -176,7 +191,10 @@ const activity = bot.state !== 'online' ? '—' :
     rows.push(['งานปัจจุบัน', display(bot.merchant.state)], ['เก็บ / คราฟต์', display(bot.merchant.harvested) + ' / ' + display(bot.merchant.crafted)],
       ['ประกาศขาย', display(bot.merchant.open) + ' รายการ']);
   }
-  if (bot.guild) rows.push(['กิลด์', bot.guild]);
+  if (bot.assignedGuild) rows.push(['กิลด์ที่กำหนด', bot.assignedGuild]);
+  if (bot.guild) rows.push(['กิลด์ปัจจุบัน', bot.guild]);
+  if (bot.missionTarget) rows.push(['เป้าหมายภารกิจ', display(bot.missionTarget)]);
+  if (bot.campaign?.nextAt) rows.push(['หมดคุ้มครองที่คาดไว้', eventDate.format(new Date(bot.campaign.nextAt)) + ' น.']);
   if (bot.skill?.id) rows.push(['สกิลล่าสุด', display(bot.skill.id) + ' · ' + display(bot.skill.casts) + ' ครั้ง']);
   if (bot.war?.site) rows.push(['สนามรบ', display(bot.war.site) + ' · ' + display(bot.war.side) + ' · ' + display(bot.war.state)]);
   if (bot.owned?.length) rows.push(['เมืองที่ครอง', bot.owned.map(display).join(' · ')]);
@@ -226,13 +244,13 @@ const activity = bot.state !== 'online' ? '—' :
         .map(([name, score]) => display(name) + ' ' + score).join(' · ')]);
     }
   }
-    return rows;
+  return rows;
 }
 
 function badge() { return node('span', undefined, 'pill'); }
 function setBadge(element, state) {
   element.dataset.state = state;
-  element.textContent = display(state);
+  element.textContent = state === 'unavailable' ? 'อ่านสถานะไม่ได้' : display(state);
 }
 function setChoices(select, choices) {
   const value = select.value;
@@ -282,25 +300,35 @@ function memberRow(bot) {
   setBadge(state, bot.state);
   const end = node('span', undefined, 'row-end');
   end.append(level, state);
-  row.append(node('span', bot.name, 'member-name'), node('span', display(bot.profession), 'row-class'), end);
+  const identity = node('span', undefined, 'member-name');
+  identity.append(node('span', bot.name));
+  if (bot.state === 'online') {
+    const activity = [bot.map, bot.mission ?? bot.goal].filter(Boolean).map(display).join(' · ');
+    const caption = needsAttention(bot) ? 'รอยืนยันกิลด์ · ' + activity : activity;
+    if (caption) identity.append(node('small', caption, 'member-activity'));
+  }
+  row.append(identity, node('span', display(bot.profession), 'row-class'), end);
   return row;
 }
 function guildCaption(leader) {
   if (!leader) return 'รอข้อมูลแม่ทัพ';
+  if (leader.state !== 'online') return 'แม่ทัพ · ' + display(leader.state);
   const campaign = leader.campaign;
   const owned = leader.owned?.map(display) ?? [];
   const assignment = leader.war?.site ? [display(leader.war.side), display(leader.war.site)].join(' · ') :
     [campaign?.city, campaign?.phase].filter(Boolean).map(display).join(' · ');
   return [owned.length ? 'ครอง ' + owned.join(' · ') : null,
     assignment && (leader.war?.site || !leader.owned?.includes(campaign?.city)) ? assignment : null]
-    .filter(Boolean).join(' | ') || display(leader.mission);
+    .filter(Boolean).join(' | ') || display(campaign?.state ?? leader.mission);
 }
 function renderGuilds(guilds) {
-  const selectedGuild = $('guild-filter').value, profession = $('class-filter').value;
-  const visible = [...guilds].filter(([name, members]) => (!selectedGuild || selectedGuild === name) &&
-    (!profession || members.some(bot => bot.profession === profession)));
+  const visible = selectGuilds(guilds, { selectedGuild: $('guild-filter').value,
+    profession: $('class-filter').value, state: $('guild-state-filter').value, search: $('guild-search').value });
+  const count = visible.reduce((total, { matched }) => total + matched.length, 0);
+  const result = visible.length ? visible.length + ' กิลด์ · ' + count + ' ตัว' : 'ไม่พบสมาชิก';
+  if ($('guild-results').textContent !== result) $('guild-results').textContent = result;
   const focused = document.activeElement?.dataset.member;
-  $('guild-grid').replaceChildren(...visible.map(([name, members]) => {
+  $('guild-grid').replaceChildren(...visible.map(({ name, members, matched }) => {
     const card = node('article', undefined, 'panel guild-card');
     card.dataset.guild = name;
     const heading = node('div', undefined, 'guild-head');
@@ -310,7 +338,9 @@ function renderGuilds(guilds) {
     const count = node('span', online + ' / ' + members.length, 'guild-count');
     count.setAttribute('aria-label', 'ออนไลน์ ' + online + ' จาก ' + members.length);
     heading.append(title, count);
-    card.append(heading, ...members.filter(bot => !profession || bot.profession === profession).map(memberRow));
+    const missing = members.filter(needsAttention).length;
+    if (missing) card.dataset.attention = 'true';
+    card.append(heading, ...matched.map(memberRow));
     return card;
   }));
   $('no-guilds').hidden = visible.length > 0;
@@ -346,7 +376,7 @@ function updateCard(bot) {
   setBadge(card.state, bot.state);
   card.meta.replaceChildren(
     node('span', ['Lv. ' + display(bot.level), display(bot.map)].join(' · ')),
-    node('span', display(bot.merchant?.state ?? bot.mission ?? bot.goal)),
+    node('span', display(bot.state === 'online' ? bot.merchant?.state ?? bot.mission ?? bot.goal : null)),
   );
   for (const [action, button] of card.controls) {
     const offline = bot.state === 'offline';
@@ -354,6 +384,61 @@ function updateCard(bot) {
     button.disabled = sending || (action === 'destination' && bot.state !== 'online') ||
       (action === 'restart' && ['starting', 'stopping', 'unavailable'].includes(bot.state));
   }
+}
+
+function renderCampaigns(field) {
+  const targets = campaignTargets(field);
+  const count = targets.reduce((total, { groups }) => total + groups.length, 0);
+  $('campaign-count').textContent = count ? count + ' กิลด์ · ' + targets.length + ' พื้นที่' : '';
+  $('campaign-list').replaceChildren(...(targets.length ? targets.map(target => {
+    const row = node('li', undefined, 'campaign-row');
+    const heading = node('div', undefined, 'target-heading');
+    heading.append(node('strong', display(target.site)), node('span', target.groups.length + ' กิลด์', 'metric-badge'));
+    const names = node('ul', undefined, 'target-guilds');
+    for (const group of target.groups) {
+      const entry = node('li', group.guild);
+      if (group.side) entry.append(node('small', display(group.side)));
+      names.append(entry);
+    }
+    row.append(heading, names);
+    return row;
+  }) : [node('li', 'ไม่มีแม่ทัพออนไลน์ที่กำลังมุ่งเป้าหมายศึก', 'empty')]));
+}
+
+function renderMerchant(bot) {
+  const view = bot?.merchant;
+  const online = bot?.state === 'online';
+  const boat = bot?.boat;
+  const route = online && observedRouteLoop(data.events ?? [], bot, data.time);
+  setBadge($('merchant-state'), bot?.state ?? 'unavailable');
+  const sailing = view?.state === 'sailing' || ['rowing', 'water_gate', 'landing', 'finding_safe_shore'].includes(boat?.state);
+  const destination = sailing ? boat?.destination ?? view?.destination : view?.destination;
+  const path = [bot?.map, destination].filter((map, i, maps) => map && maps.indexOf(map) === i);
+  const facts = [];
+  if (Number.isFinite(bot?.level)) facts.push('เลเวล ' + display(bot.level));
+  if (path.length) facts.push(path.map(display).join(' → '));
+  if (view?.item) facts.push(display(view.item));
+  $('merchant-task').textContent = online ? display(view?.state ?? bot.goal) : display(bot?.state ?? 'unavailable');
+  $('merchant-place').textContent = online ? facts.join(' · ') : 'รอข้อมูลจากบอตพ่อค้า';
+  const warning = $('merchant-warning');
+  warning.textContent = route
+    ? 'เดินทางกลับไปมาระหว่าง ' + route.maps.map(display).join(' ↔ ') + ' ตั้งแต่ ' + eventDate.format(new Date(route.since)) + ' น.'
+    : '';
+  warning.hidden = !route;
+  const details = [];
+  if (sailing && boat?.state && boat.state !== 'idle') {
+    const stages = [boat.state, boat.error].filter(Boolean).map(display);
+    if (boat.gates > 0) stages.push('ผ่านทางน้ำ ' + display(boat.gates) + ' จุด');
+    details.push('เรือ ' + stages.join(' · '));
+  }
+  if (view?.error) details.push('คำสั่งล่าสุด ' + display(view.error));
+  $('merchant-route').textContent = online ? details.join(' | ') : '';
+  $('merchant-route').hidden = !$('merchant-route').textContent;
+  for (const [id, value] of Object.entries({
+    harvested: view?.harvested, refined: view?.refined, crafted: view?.crafted,
+    listed: view?.listed, 'market-open': view?.open, quality: view?.qualityListed,
+  })) $('merchant-' + id).textContent = online ? display(value) : '—';
+  $('merchant-debug').disabled = !bot;
 }
 
 function warRow(war, finished) {
@@ -399,6 +484,7 @@ function renderEvents() {
     const details = [row.tool, row.map ?? row.site, row.item, row.skill, row.side, row.mission, row.goal,
       row.reason, row.destination ?? row.target].filter(Boolean).map(display);
     if (row.type === 'operator_action' && Object.hasOwn(actions, row.action)) details.push(actions[row.action][0]);
+    if (row.from && row.to) details.push(display(row.from) + ' → ' + display(row.to));
     if (row.outcome) details.push(display(row.outcome));
     if (row.rank != null) details.push('+' + row.rank);
     if (row.quantity != null) details.push('×' + row.quantity);
@@ -414,15 +500,19 @@ function renderEvents() {
 function render() {
   const { guilds, reserves, operations } = groupBots();
   const field = [...guilds.values()].flat();
-  const online = field.filter(bot => bot.state === 'online' && bot.guild === bot.assignedGuild);
-  $('online-count').textContent = online.length + ' / ' + field.length;
-  $('guild-count').textContent = guilds.size ? guilds.size + ' กิลด์' : 'รอข้อมูลกิลด์';
+  const fleet = summarizeFleet(data.bots);
+  $('online-count').textContent = fleet.online + ' / ' + fleet.total;
+  $('guild-count').textContent = guilds.size ? guilds.size + ' กิลด์ · พร้อม ' + fleet.combatReady + '/' + fleet.field : 'รอข้อมูลกิลด์';
+  $('attention-count').textContent = display(fleet.needsAttention);
+  $('attention-count').dataset.attention = String(fleet.needsAttention > 0);
   $('game-state').textContent = data.game ? 'ตอบสนอง' : 'ไม่ตอบสนอง';
   $('party-state').textContent = display(data.team?.state);
-  $('updated').textContent = clock.format(new Date(data.time));
+  $('updated').textContent = 'อัปเดต ' + clock.format(new Date(data.time)) + ' น.';
   setChoices($('guild-filter'), [...guilds.keys()].map(name => [name, name]));
   setChoices($('class-filter'), [...new Set(field.map(bot => bot.profession).filter(Boolean))].map(id => [id, display(id)]));
   setChoices($('bot-filter'), data.bots.map(bot => [bot.id, bot.name]));
+  renderCampaigns(field);
+  renderMerchant(operations.find(bot => bot.role === 'merchant'));
   renderWars(guilds);
   renderGuilds(guilds);
   operations.forEach(updateCard);
@@ -436,13 +526,15 @@ function lock() {
   activeRead?.abort();
   key = '';
   data = undefined;
-    dirtyRead = false;
+  dirtyRead = false;
   $('bot-dialog').close();
   $('action-dialog').close();
   selectedBot = null;
-  for (const id of ['guild-grid', 'reserve-list', 'war-results', 'war-live']) $(id).replaceChildren();
+  for (const id of ['guild-grid', 'reserve-list', 'war-results', 'war-live', 'campaign-list']) $(id).replaceChildren();
   for (const id of ['guild-filter', 'class-filter', 'bot-filter']) setChoices($(id), []);
-cards.clear();
+  $('guild-state-filter').value = '';
+  $('guild-search').value = '';
+  cards.clear();
   $('bots').replaceChildren();
   $('events').replaceChildren();
   $('dashboard').hidden = $('lock').hidden = $('refresh').hidden = true;
@@ -500,8 +592,18 @@ $('login').addEventListener('submit', event => {
 $('refresh').addEventListener('click', () => { announce(''); void refresh(); });
 $('lock').addEventListener('click', lock);
 $('bot-filter').addEventListener('change', renderEvents);
-$('guild-filter').addEventListener('change', () => data && renderGuilds(groupBots().guilds));
-$('class-filter').addEventListener('change', () => data && renderGuilds(groupBots().guilds));
+for (const id of ['guild-filter', 'class-filter', 'guild-state-filter', 'guild-search']) {
+  $(id).addEventListener(id === 'guild-search' ? 'input' : 'change', () => { if (data) renderGuilds(groupBots().guilds); });
+}
+$('merchant-debug').addEventListener('click', () => {
+  const merchant = data?.bots.find(bot => bot.role === 'merchant');
+  if (!merchant) return;
+  $('bot-filter').value = merchant.id;
+  $('category-filter').value = 'travel';
+  renderEvents();
+  $('activity').scrollIntoView();
+  $('bot-filter').focus({ preventScroll: true });
+});
 $('close-bot').addEventListener('click', () => $('bot-dialog').close());
 $('filter-by-bot').addEventListener('click', () => {
   if (selectedBot) $('bot-filter').value = selectedBot;

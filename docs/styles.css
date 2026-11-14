@@ -146,3 +146,49 @@ dialog::backdrop { background: #0a0a09cc; }
   .login-input { flex-wrap: wrap; }
   .login-input input { flex-basis: 100%; }
 }
+
+/* Fleet overview */
+#attention-count { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+#attention-count[data-attention="true"] { color: var(--gold); }
+.watch-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: .85rem; margin-top: 1.25rem; }
+.watch-panel { min-width: 0; overflow: hidden; }
+.watch-head, .watch-footer, .target-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .55rem; }
+.watch-head { padding: .85rem 1rem; background: var(--raised); border-bottom: 1px solid var(--line); }
+.watch-head h2 { font-size: 1.23rem; }
+.metric-badge { color: var(--gold); font-size: .85rem; font-weight: 600; }
+.campaign-list, .target-guilds { list-style: none; margin: 0; padding: 0; }
+.campaign-list { max-height: 23rem; overflow-y: auto; }
+.campaign-row { padding: .85rem 1rem; }
+.campaign-row + .campaign-row { border-top: 1px solid var(--line); }
+.target-heading strong, .merchant-current strong { overflow-wrap: anywhere; }
+.target-guilds { display: flex; flex-wrap: wrap; gap: .38rem; margin-top: .52rem; }
+.target-guilds li { display: inline-flex; align-items: baseline; gap: .38rem; flex-wrap: wrap; overflow-wrap: anywhere; background: #141410; border: 1px solid var(--line); border-radius: 5px; padding: .18rem .5rem; }
+.merchant-current { padding: .82rem 1rem; overflow-wrap: anywhere; }
+.merchant-current p, .merchant-current small { color: var(--muted); }
+.merchant-current strong { font-size: 1.14rem; }
+.watch-warning { margin: 0 1rem .82rem; padding: .55rem .68rem; border-left: 2px solid var(--gold); background: #292219; color: #f1c688; overflow-wrap: anywhere; }
+.merchant-metrics { margin: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-block: 1px solid var(--line); }
+.merchant-metrics > div { min-width: 0; padding: .52rem .75rem .52rem 1rem; }
+.merchant-metrics > div:not(:nth-child(3n+1)) { border-left: 1px solid var(--line); }
+.merchant-metrics > div:nth-child(n+4) { border-top: 1px solid var(--line); }
+.merchant-metrics dt { color: var(--muted); font-size: .83rem; overflow-wrap: anywhere; }
+.merchant-metrics dd { margin: .22rem 0 0; font: 700 1rem var(--mono); overflow-wrap: anywhere; }
+.watch-footer { padding: .62rem 1rem; }
+.watch-footer small { font-size: .77rem; }
+#guild-search { max-width: 220px; }
+#guild-results { min-height: 1.55em; }
+.guild-card[data-attention="true"] .guild-count { color: var(--rose); }
+.member-activity { display: block; color: var(--muted); font-weight: 400; font-size: .79rem; line-height: 1.35; margin-top: .17rem; overflow-wrap: anywhere; }
+.guild-card[data-guild="ธงอรุณ"] { --guild: #e4b788; }
+.guild-card[data-guild="ธงวายุ"] { --guild: #a7cba9; }
+.guild-card[data-guild="ธงอัคคี"] { --guild: #ef9a87; }
+.guild-card[data-guild="ธงศิลา"] { --guild: #c3c2a8; }
+.guild-card[data-guild="ธงสายธาร"] { --guild: #7bbdba; }
+@media (max-width: 780px) {
+  .watch-grid { grid-template-columns: minmax(0, 1fr); }
+}
+@media (max-width: 535px) {
+  .filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); width: 100%; }
+  .filters label, .filters input, .filters select { min-width: 0; max-width: none; }
+  .merchant-metrics > div { padding-inline: .72rem; }
+}

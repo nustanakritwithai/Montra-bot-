@@ -25,7 +25,7 @@
   </header>
   <main id="main" class="frame">
     <section class="page-heading">
-      <div><h1>ศูนย์ควบคุมบอต</h1><p>ติดตามกิลด์ ศึกชิงเมือง และการทำงานของบอตใน Montra</p></div>
+      <h1>ศูนย์ควบคุมบอต</h1>
     </section>
     <section id="locked" class="login panel" aria-labelledby="login-title">
       <h2 id="login-title">เข้าแดชบอร์ด</h2>
@@ -38,14 +38,38 @@
     <p id="notice" class="notice" role="status" hidden></p>
     <div id="dashboard" hidden>
       <section class="summary panel" aria-label="สรุปสถานะ">
-        <div class="summary-cell"><span>ทีมกิลด์ออนไลน์</span><strong id="online-count">—</strong><small id="guild-count"></small></div>
+        <div class="summary-cell"><span>บอตหลักออนไลน์</span><strong id="online-count">—</strong><small id="guild-count"></small></div>
         <div class="summary-cell"><span>ศึกที่เปิดอยู่</span><strong id="war-count">—</strong><small id="war-summary"></small></div>
         <div class="summary-cell"><span>เซิร์ฟเวอร์เกม</span><strong id="game-state">—</strong><small id="party-state"></small></div>
-        <div class="summary-cell"><span>อัปเดตล่าสุด</span><strong id="updated">—</strong><small>เวลาไทย</small></div>
+        <div class="summary-cell"><span>ต้องตรวจ</span><strong id="attention-count">—</strong><small id="updated"></small></div>
       </section>
       <nav class="jump" aria-label="ส่วนของแดชบอร์ด">
-        <a href="#wars">ศึกเมือง</a><a href="#guilds">กิลด์</a><a href="#operations">บอตหลัก</a><a href="#reserves">สำรอง</a><a href="#activity">เหตุการณ์</a>
+        <a href="#campaign">เป้าหมายแม่ทัพ</a><a href="#merchant">พ่อค้า</a><a href="#wars">ศึกเมือง</a><a href="#guilds">กิลด์</a><a href="#operations">บอตหลัก</a><a href="#reserves">สำรอง</a><a href="#activity">เหตุการณ์</a>
       </nav>
+      <div class="watch-grid">
+        <section id="campaign" class="panel watch-panel" aria-labelledby="campaign-title">
+          <div class="watch-head"><h2 id="campaign-title">เป้าหมายแม่ทัพ</h2><span id="campaign-count" class="metric-badge"></span></div>
+          <ul id="campaign-list" class="campaign-list"></ul>
+        </section>
+        <section id="merchant" class="panel watch-panel" aria-labelledby="merchant-title">
+          <div class="watch-head"><h2 id="merchant-title">งานพ่อค้า</h2><span id="merchant-state" class="pill"></span></div>
+          <div class="merchant-current">
+            <strong id="merchant-task"></strong>
+            <p id="merchant-place"></p>
+            <small id="merchant-route" hidden></small>
+          </div>
+          <p id="merchant-warning" class="watch-warning" hidden></p>
+          <dl class="merchant-metrics">
+            <div><dt>เก็บวัตถุดิบ</dt><dd id="merchant-harvested">—</dd></div>
+            <div><dt>แปรรูป</dt><dd id="merchant-refined">—</dd></div>
+            <div><dt>คราฟต์</dt><dd id="merchant-crafted">—</dd></div>
+            <div><dt>ลงขาย</dt><dd id="merchant-listed">—</dd></div>
+            <div><dt>ประกาศเปิดอยู่</dt><dd id="merchant-market-open">—</dd></div>
+            <div><dt>ลงขายของคุณภาพ</dt><dd id="merchant-quality">—</dd></div>
+          </dl>
+          <div class="watch-footer"><small>ยอดการทำงานตั้งแต่เชื่อมเกมรอบล่าสุด</small><button id="merchant-debug" type="button" class="quiet">ดูเส้นทางล่าสุด</button></div>
+        </section>
+      </div>
       <section id="wars" class="war-section" aria-labelledby="wars-title">
         <div class="section-head">
           <div><h2 id="wars-title">ศึกชิงเมือง</h2><p id="war-next"></p></div>
@@ -58,10 +82,12 @@
       </section>
       <section id="guilds" aria-labelledby="guilds-title">
         <div class="section-head">
-          <div><h2 id="guilds-title">กิลด์ภาคสนาม</h2><p>แม่ทัพสายดาบคู่และนักรบประจำอาชีพ</p></div>
+          <div><h2 id="guilds-title">กิลด์ภาคสนาม</h2><p id="guild-results" role="status"></p></div>
           <div class="filters">
             <label>กิลด์<select id="guild-filter"><option value="">ทุกกิลด์</option></select></label>
             <label>อาชีพ<select id="class-filter"><option value="">ทุกอาชีพ</option></select></label>
+            <label>สถานะ<select id="guild-state-filter"><option value="">ทุกสถานะ</option><option value="attention">ต้องตรวจ</option><option value="online">ออนไลน์</option><option value="reconnecting">กำลังเชื่อมใหม่</option><option value="offline">ออฟไลน์</option></select></label>
+            <label>ค้นหา<input id="guild-search" type="search" maxlength="60" placeholder="ชื่อบอตหรือกิลด์"></label>
           </div>
         </div>
         <div id="guild-grid" class="guild-grid"></div>

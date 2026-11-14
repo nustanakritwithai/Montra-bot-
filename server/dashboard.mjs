@@ -28,6 +28,9 @@ const operations = Object.entries(controls).map(([id, bot]) => ({ id, ...bot, gr
 const categories = {
   guild_war_joined: 'guild', profession_skill_used: 'combat', city_ownership_confirmed: 'guild',
   merchant_level_observed: 'trade', merchant_quality_improved: 'trade',
+  merchant_map_entered: 'travel', merchant_portal_attempt: 'travel', boat_trip_started: 'travel',
+  boat_trip_finished: 'travel', boat_gate_crossed: 'travel', merchant_queued: 'trade',
+  merchant_tool_harvest: 'trade', merchant_retry: 'trade',
   joined: 'connection', connection_error: 'connection', stopped: 'connection',
   mission_selected: 'decision', ai_decision: 'decision', goal: 'decision',
   portal_attempt: 'travel', destination: 'travel', destination_arrived: 'travel',
@@ -63,7 +66,8 @@ export function publicBot(entry, raw, state) {
     profession: label(s.profession?.path ?? s.sword?.path ?? profession),
     skill: s.profession ? { id: label(s.profession.lastCast?.id), casts: count(s.profession.casts) } : null,
     campaign: s.cityCampaign ? { city: label(s.cityCampaign.city), state: label(s.cityCampaign.state),
-      phase: label(s.cityCampaign.phase), nextAt: count(s.cityCampaign.nextChallengeAt) } : null,
+      phase: label(s.cityCampaign.phase), side: label(s.cityCampaign.side), owner: text(s.cityCampaign.owner),
+      nextAt: count(s.cityCampaign.nextChallengeAt) } : null,
     war: s.guildWar ? { site: label(s.guildWar.site), side: label(s.guildWar.side), state: label(s.guildWar.state),
       hits: count(s.guildWar.hits), joined: count(s.guildWar.joined) } : null,
     owned: toolLabels(s.territory?.owned), controls: Object.hasOwn(controls, id), goal: label(s.goal), map: label(s.map),
@@ -71,7 +75,7 @@ export function publicBot(entry, raw, state) {
     hp: count(s.hp), maxHp: count(s.maxHp), x: count(s.x), z: count(s.z),
     hits: count(s.hits), kills: count(s.kills), retries: count(s.retries),
     target: label(s.huntTargetId), lastEvent: label(s.lastEvent),
-    mission: label(s.mission?.mission), reason: label(s.mission?.reason),
+    mission: label(s.mission?.mission), reason: label(s.mission?.reason), missionTarget: label(s.mission?.target),
     plan: s.plan ? { source: label(s.plan.source), state: label(s.plan.state), tool: label(s.plan.tool),
       reason: typeof s.plan.reason === 'string' ? s.plan.reason.slice(0, 180) : null,
       posture: label(s.plan.posture), tactic: label(s.plan.tactic), appliedAt: count(s.plan.appliedAt),
@@ -113,8 +117,12 @@ export function publicBot(entry, raw, state) {
     forge: forge ? { state: label(forge.state), rank: count(forge.rank), stock: count(forge.stock),
       missing: count(forge.missing), camp: text(forge.camp?.name), nextAt: count(forge.nextAt) } : null,
     potions: s.potions ? { state: label(s.potions.state), used: count(s.potions.used), bought: count(s.potions.bought) } : null,
-    merchant: merchant ? { state: label(merchant.state), harvested: count(merchant.harvested),
-      crafted: count(merchant.crafted), listed: count(merchant.listed), open: Array.isArray(merchant.listings) ? merchant.listings.length : null } : null,
+    boat: s.boat ? { state: label(s.boat.state), origin: label(s.boat.origin), destination: label(s.boat.destination),
+      gates: count(s.boat.gatesCrossed), error: label(s.boat.lastReject) } : null,
+    merchant: merchant ? { state: label(merchant.state), harvested: count(merchant.harvested), refined: count(merchant.refined),
+      item: label(merchant.itemId), destination: label(merchant.progression?.destination ?? s.training?.destination), error: label(merchant.lastError),
+      crafted: count(merchant.crafted), listed: count(merchant.listed), open: Array.isArray(merchant.listings) ? merchant.listings.length : null,
+      qualityListed: count(merchant.production?.qualityListed) } : null,
   };
 }
 
@@ -128,24 +136,28 @@ export async function recentEvents(file, bot) {
     const { bytesRead } = await handle.read(buffer, 0, buffer.length, size - buffer.length);
     const lines = buffer.subarray(0, bytesRead).toString('utf8').replace(/^\uFEFF/, '').split('\n');
     if (size > buffer.length) lines.shift();
-    const result = [];
+    const result = [], merchantMaps = [];
     for (const line of lines.reverse()) {
-      if (result.length >= 24) break;
+      if (result.length >= 24 && (bot !== 'merchant' || merchantMaps.length >= 8)) break;
       let row;
       try { row = JSON.parse(line); } catch { continue; }
       if (!row || !Object.hasOwn(categories, row.event) || !Number.isFinite(Date.parse(row.time))) continue;
       const eventBot = bot ?? (typeof row.bot === 'string' && Object.hasOwn(controls, row.bot) ? row.bot : null);
       if (!eventBot) continue;
-      result.push({ bot: eventBot, time: row.time, type: row.event, category: categories[row.event],
+      const event = { bot: eventBot, time: row.time, type: row.event, category: categories[row.event],
         map: label(row.map ?? row.mapId), item: label(row.itemId ?? row.item), goal: label(row.goal),
-        mission: label(row.mission), reason: row.event === 'mission_selected' ? label(row.reason) : null,
+        mission: label(row.mission), reason: ['mission_selected', 'merchant_retry'].includes(row.event) ? label(row.reason) : null,
         target: label(row.target), destination: label(row.destination), action: label(row.action),
+        from: row.event === 'merchant_portal_attempt' ? label(row.from) : null,
+        to: row.event === 'merchant_portal_attempt' ? label(row.to) : null,
         site: label(row.site), skill: label(row.skill), side: label(row.side),
         tool: label(row.tool), outcome: label(row.outcome), step: count(row.step),
         rank: count(row.rank), quantity: count(row.quantity ?? row.stock),
-        price: count(row.price ?? row.cost), success: typeof row.success === 'boolean' ? row.success : null });
+        price: count(row.price ?? row.cost), success: typeof row.success === 'boolean' ? row.success : null };
+      if (result.length < 24) result.push(event);
+      if (bot === 'merchant' && row.event === 'merchant_map_entered' && merchantMaps.length < 8) merchantMaps.push(event);
     }
-    return result;
+    return [...new Set([...result, ...merchantMaps])].sort((a, b) => Date.parse(b.time) - Date.parse(a.time));
   } finally { await handle.close(); }
 }
 
@@ -262,7 +274,8 @@ export function dashboardServer({ root, key, origin, auditLog, run = execute, re
       fetch(loopback(4108) + '/hi', { signal: AbortSignal.timeout(2000) })
         .then(response => response.ok).catch(() => false),
       Promise.all([
-        ...roster.map(bot => readEvents(join(root, bot.log), bot.id).then(rows => rows.slice(0, 12)).catch(() => [])),
+        ...roster.map(bot => readEvents(join(root, bot.log), bot.id)
+          .then(rows => bot.id === 'merchant' ? rows.slice(0, 32) : rows.slice(0, 12)).catch(() => [])),
         ...(auditLog ? [readEvents(auditLog, null).catch(() => [])] : []),
       ]),
       Promise.resolve().then(readBattles).catch(() => null),

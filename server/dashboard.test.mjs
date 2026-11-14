@@ -36,6 +36,26 @@ test('event feed exposes only approved structured fields', async () => {
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
+test('merchant feed retains map evidence even when decision events fill the recent feed', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'montra-dashboard-route-'));
+  const file = join(directory, 'merchant.log');
+  try {
+    const time = seconds => new Date(Date.UTC(2026, 10, 14, 18, 0, seconds)).toISOString();
+    const maps = Array.from({ length: 6 }, (_, i) => ({
+      event: 'merchant_map_entered', time: time(i), map: i % 2 ? 'moon_cemetery' : 'bound_temple',
+    }));
+    const activity = Array.from({ length: 26 }, (_, i) => ({ event: 'ai_decision', time: time(i + 6) }));
+    activity.push({ event: 'merchant_portal_attempt', time: time(33),
+      from: 'bound_temple', to: 'moon_cemetery', destination: 'moon_cemetery', sessionId: 'private' });
+    await writeFile(file, [...maps, ...activity].map(row => JSON.stringify(row)).join('\n'));
+    const results = await recentEvents(file, 'merchant');
+    assert.equal(results.filter(row => row.type === 'merchant_map_entered').length, 6);
+    assert.equal(results[0].from, 'bound_temple');
+    assert.equal(results[0].to, 'moon_cemetery');
+    assert(!JSON.stringify(results).includes('private'));
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
 test('overview, CORS and commands are authenticated, filtered and serialized', async () => {
   const origin = 'https://example.test';
   const key = randomBytes(32).toString('hex');
