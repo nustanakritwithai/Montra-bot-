@@ -32,6 +32,8 @@ const stateNames = {
   no_eligible_weapon: 'ไม่มีอาวุธที่ใช้ได้', party_help_sent: 'ส่งข้อความขอความช่วยเหลือแล้ว',
   guild_banner_planted: 'ปักธงแล้ว', territory_admitted: 'เกมอนุญาตให้เข้าศึกแล้ว',
   md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
+  skill_list: 'ดูคลังทักษะ', skill_load: 'เปิดทักษะ', skill_save: 'บันทึกทักษะ',
+  'route-recovery': 'กู้เส้นทาง', supplies: 'เติมเสบียง', 'merchant-restock': 'เติมสินค้าร้านยา', combat: 'ล่ามอนสเตอร์',
   inspect_inventory: 'ดูกระเป๋า', inspect_character: 'ดูสเตตัส', inspect_needs: 'ดูความหิวและกระหาย',
   inspect_resources: 'ดูทรัพยากร', inspect_home: 'ดูบ้านและสวน', inspect_city_trade: 'ดูตลาดและสัญญาค้าเมือง',
   consume_nutrition: 'กินหรือดื่ม', collect_water: 'ตักน้ำ', cook_basic_meal: 'ทำต้มปลาช่อน', visit_village_well: 'เดินทางไปลานตักน้ำ',
@@ -201,7 +203,11 @@ function updateCard(bot) {
     const result = bot.tools.lastResult;
     if (result?.tool && result.outcome) rows.push(['ผลล่าสุด', display(result.tool) + ' · ' + display(result.outcome)]);
     const side = bot.tools.lastSideResult;
-    if (side?.tool && side.outcome) rows.push(['ผลอ่านข้อมูลหรือไฟล์', display(side.tool) + ' · ' + display(side.outcome)]);
+    if (side?.tool && side.outcome) rows.push(['ผลเครื่องมือล่าสุด', display(side.tool) + ' · ' + display(side.outcome)]);
+    const skills = bot.tools.skills;
+    if (skills?.total != null) rows.push(['คลังทักษะ', display(skills.total) + ' รายการ']);
+    if (skills?.selected) rows.push(['ทักษะที่โหลด', display(skills.selected)]);
+    if (skills?.lastSaved) rows.push(['ทักษะที่บันทึกล่าสุด', display(skills.lastSaved)]);
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
