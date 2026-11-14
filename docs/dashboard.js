@@ -34,6 +34,7 @@ const stateNames = {
   md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
   skill_list: 'ดูคลังทักษะ', skill_load: 'เปิดทักษะ', skill_save: 'บันทึกทักษะ',
   kama: 'กามตัณหา', bhava: 'ภวตัณหา', vibhava: 'วิภวตัณหา',
+  low: 'ระวังความเสี่ยง', high: 'ยอมรับความเสี่ยงสูง',
   critical_hp: 'เลือดวิกฤต', low_hp: 'เลือดต่ำ', under_attack: 'ถูกโจมตี',
   low_food: 'หิว', low_water: 'กระหาย', bag_full: 'กระเป๋าเต็ม', route_failed: 'เส้นทางติด',
   'route-recovery': 'กู้เส้นทาง', supplies: 'เติมเสบียง', 'merchant-restock': 'เติมสินค้าร้านยา', combat: 'ล่ามอนสเตอร์',
@@ -218,6 +219,12 @@ function updateCard(bot) {
         display(name) + ' ' + display(score)).join(' · ')]);
       if (drives.pressure.length) rows.push(['สภาวะที่กดดัน', drives.pressure.map(display).join(' · ')]);
     }
+    const personality = bot.tools.personality;
+    if (personality?.source === 'typhoon') {
+      rows.push(['บุคลิกปัจจุบัน', [personality.mood, personality.risk].filter(Boolean).map(display).join(' · ')]);
+      rows.push(['ความตั้งใจ', display(personality.intention)]);
+      if (personality.focus) rows.push(['สิ่งที่ให้ความสำคัญ', display(personality.focus)]);
+    } else if (personality?.source === 'unavailable') rows.push(['บุคลิกปัจจุบัน', 'รอบนี้ Typhoon ประมวลผลบุคลิกไม่สำเร็จ']);
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
