@@ -34,6 +34,9 @@ const stateNames = {
   md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
   skill_list: 'ดูคลังทักษะ', skill_load: 'เปิดทักษะ', skill_save: 'บันทึกทักษะ',
   kama: 'กามตัณหา', bhava: 'ภวตัณหา', vibhava: 'วิภวตัณหา',
+  pleasant: 'สุข', painful: 'ทุกข์', neutral: 'เฉย ๆ', selected: 'เลือกแล้ว', executing: 'กำลังทำ',
+  completed: 'ทำสำเร็จ', interrupted: 'ยุติการกระทำ', blocked: 'ทำต่อไม่ได้',
+  interrupted_for_safety: 'พักแผนเพื่อความปลอดภัย', profitable_trade: 'มีสินค้าที่ขายได้กำไร',
   low: 'ระวังความเสี่ยง', high: 'ยอมรับความเสี่ยงสูง',
   critical_hp: 'เลือดวิกฤต', low_hp: 'เลือดต่ำ', under_attack: 'ถูกโจมตี',
   low_food: 'หิว', low_water: 'กระหาย', bag_full: 'กระเป๋าเต็ม', route_failed: 'เส้นทางติด',
@@ -201,6 +204,7 @@ function updateCard(bot) {
   if (bot.plan?.step) rows.push(['ขั้นของแผน', bot.plan.step + ' / ' + bot.plan.total +
     (bot.role === 'fighter' ? ' · ' + display(bot.plan.tactic) : '')]);
   else if (bot.plan?.state === 'fallback') rows.push(['แผน', 'ใช้กติกาสำรอง']);
+  else if (bot.plan?.source === 'feeling_rules') rows.push(['แผนตามเวทนา', display(bot.plan.tool)]);
   if (bot.tools) {
     rows.push(['เครื่องมือที่พร้อม', bot.tools.ready.map(display).join(' · ') || '—']);
     if (bot.tools.automatic.length) rows.push(['ระบบอัตโนมัติ', bot.tools.automatic.map(display).join(' · ')]);
@@ -225,6 +229,11 @@ function updateCard(bot) {
       rows.push(['ความตั้งใจ', display(personality.intention)]);
       if (personality.focus) rows.push(['สิ่งที่ให้ความสำคัญ', display(personality.focus)]);
     } else if (personality?.source === 'unavailable') rows.push(['บุคลิกปัจจุบัน', 'รอบนี้ Typhoon ประมวลผลบุคลิกไม่สำเร็จ']);
+    const feeling = bot.tools.feeling;
+    if (feeling) {
+      rows.push(['เวทนาปัจจุบัน', [feeling.kind, ...feeling.reasons].filter(Boolean).map(display).join(' · ')]);
+      rows.push(['ผลการกระทำ', [feeling.state, feeling.outcome].filter(Boolean).map(display).join(' · ')]);
+    }
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
