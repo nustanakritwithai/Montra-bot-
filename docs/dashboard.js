@@ -33,6 +33,9 @@ const stateNames = {
   guild_banner_planted: 'ปักธงแล้ว', territory_admitted: 'เกมอนุญาตให้เข้าศึกแล้ว',
   md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
   skill_list: 'ดูคลังทักษะ', skill_load: 'เปิดทักษะ', skill_save: 'บันทึกทักษะ',
+  kama: 'กามตัณหา', bhava: 'ภวตัณหา', vibhava: 'วิภวตัณหา',
+  critical_hp: 'เลือดวิกฤต', low_hp: 'เลือดต่ำ', under_attack: 'ถูกโจมตี',
+  low_food: 'หิว', low_water: 'กระหาย', bag_full: 'กระเป๋าเต็ม', route_failed: 'เส้นทางติด',
   'route-recovery': 'กู้เส้นทาง', supplies: 'เติมเสบียง', 'merchant-restock': 'เติมสินค้าร้านยา', combat: 'ล่ามอนสเตอร์',
   inspect_inventory: 'ดูกระเป๋า', inspect_character: 'ดูสเตตัส', inspect_needs: 'ดูความหิวและกระหาย',
   inspect_resources: 'ดูทรัพยากร', inspect_home: 'ดูบ้านและสวน', inspect_city_trade: 'ดูตลาดและสัญญาค้าเมือง',
@@ -208,6 +211,13 @@ function updateCard(bot) {
     if (skills?.total != null) rows.push(['คลังทักษะ', display(skills.total) + ' รายการ']);
     if (skills?.selected) rows.push(['ทักษะที่โหลด', display(skills.selected)]);
     if (skills?.lastSaved) rows.push(['ทักษะที่บันทึกล่าสุด', display(skills.lastSaved)]);
+    const drives = bot.tools.drives;
+    if (drives?.dominant) {
+      rows.push(['แรงขับนำ', display(drives.dominant)]);
+      rows.push(['คะแนนแรงขับ', Object.entries(drives.scores).map(([name, score]) =>
+        display(name) + ' ' + display(score)).join(' · ')]);
+      if (drives.pressure.length) rows.push(['สภาวะที่กดดัน', drives.pressure.map(display).join(' · ')]);
+    }
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
   for (const [action, button] of card.controls) {
