@@ -4,6 +4,14 @@ const number = new Intl.NumberFormat('th-TH', { maximumFractionDigits: 1 });
 const clock = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const eventDate = new Intl.DateTimeFormat('th-TH', { timeZone: 'Asia/Bangkok', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 const stateNames = {
+  phutthaisawan: 'ดาบคู่', muay_boran: 'มวยไทยโบราณ', blade: 'คมดาบ', sentinel: 'ผู้พิทักษ์', seer: 'ผู้ร่ายเวท', mender: 'พระ',
+  protected: 'คุ้มครอง', secured: 'ครองเมือง', battle: 'กำลังรบ', open: 'เปิดชิง', finished: 'จบศึก',
+  attack: 'ฝ่ายบุก', defend: 'ฝ่ายตั้งรับ', guild_war: 'ศึกกิลด์', idle: 'พักภารกิจ', separate_roles: 'ตัวควบคุมบอตพร้อม',
+  moon_pass: 'ด่านจันทร์', river_watch: 'ป้อมท่าปากชล', sam_lan_estuary: 'ปากน้ำสามลาน', tri_wiang_castle: 'ปราสาทสามเวียง',
+  asura_peak: 'ยอดเขาอสูร', spirit_rift: 'รอยแยกวิญญาณ', bound_temple: 'วัดร้างพันธนาการ', bamboo_frontier: 'ดงไผ่',
+  moon_cemetery: 'ป่าช้าเงาจันทร์', fallen_city: 'เมืองอาคมล่ม', twin_neck_pass: 'ด่านสันเขาสองคอ',
+  seer_buffalo: 'ควายธนู', seer_poison: 'ข้าวสารพิษ', mender_core_heal: 'พรฟื้นกาย', mender_core_circle: 'มหายันต์ฟื้นชีพ',
+  shock: 'กระแทกหยุดทัพ', riposte: 'ตั้งง้าวสวน', blade_fury: 'ปลุกจิตสังหาร', blade_heavy: 'คมสังหาร',
   online: 'ออนไลน์', offline: 'ออฟไลน์', unavailable: 'อ่านสถานะไม่ได้', starting: 'กำลังเปิด',
   stopping: 'กำลังหยุด', reconnecting: 'กำลังเชื่อมใหม่', failed: 'ขัดข้อง', stale: 'ข้อมูลล่าสุดที่อ่านได้',
   training_together: 'กำลังเก็บเลเวล', independent_training: 'ล่าอิสระ · ช่วยเมื่อถูกเรียก',
@@ -59,6 +67,8 @@ const stateNames = {
   wp_twins_5: 'ดาบคู่ป่าลึก', wp_twins_1: 'ดาบคู่ลานฝึก', use_herbal_1: 'ยาเลือด', use_mana_1: 'ยามานา',
 };
 const eventNames = {
+  guild_war_joined: 'เข้าสนามรบ', profession_skill_used: 'ใช้สกิลอาชีพ', city_ownership_confirmed: 'ยึดเมืองสำเร็จ',
+  merchant_level_observed: 'ตรวจเลเวลพ่อค้า', merchant_quality_improved: 'ตีบวกสินค้า',
   joined: 'เข้าเกม', connection_error: 'หลุดการเชื่อมต่อ', stopped: 'หยุดบอต',
   mission_selected: 'เลือกภารกิจ', ai_decision: 'AI เลือกเป้าหมาย', goal: 'เปลี่ยนพฤติกรรม',
   portal_attempt: 'เข้าประตูข้ามแผนที่', destination: 'รับคำสั่งเดิน', destination_arrived: 'ถึงจุดหมาย',
@@ -93,6 +103,8 @@ let timer;
 let pending;
 let activeRead;
 let sending = false;
+let selectedBot = null;
+let dirtyRead = false;
 const cards = new Map();
 
 function display(value) {
@@ -142,51 +154,15 @@ function showAction(bot, action) {
   $('action-dialog').showModal();
 }
 
-function updateCard(bot) {
-  let card = cards.get(bot.id);
-  if (!card) {
-    const root = node('article', undefined, 'panel bot');
-    const title = node('div');
-    title.append(node('h3', bot.name), node('span', bot.role === 'merchant' ? 'การค้าและคราฟต์' : 'ต่อสู้และเก็บเลเวล', 'role'));
-    const badge = node('span', undefined, 'pill');
-    const heading = node('div', undefined, 'card-head');
-    heading.append(title, badge);
-    const level = node('div', undefined, 'level');
-    const hp = node('div', undefined, 'health');
-    const meter = node('progress');
-    meter.setAttribute('aria-label', 'พลังชีวิต ' + bot.name);
-    const healthText = node('small');
-    hp.append(meter, healthText);
-    const details = node('dl');
-    const buttons = node('div', undefined, 'card-actions');
-    const controls = new Map();
-    for (const action of bot.role === 'merchant' ? ['restart', 'stop', 'start'] : ['restart', 'destination']) {
-      const button = node('button', actions[action][0], 'quiet');
-      button.type = 'button';
-      button.addEventListener('click', () => showAction(card.current, action));
-      controls.set(action, button);
-      buttons.append(button);
-    }
-    root.append(heading, level, hp, details, buttons);
-    $('bots').append(root);
-    card = { badge, level, hp, meter, healthText, details, controls };
-    cards.set(bot.id, card);
-  }
-  card.current = bot;
-  card.badge.dataset.state = bot.state;
-  card.badge.textContent = display(bot.state);
-  card.level.textContent = 'Lv. ' + display(bot.level);
-  card.hp.hidden = !bot.maxHp;
-  card.meter.max = bot.maxHp || 1;
-  card.meter.value = bot.hp ?? 0;
-  card.healthText.textContent = display(bot.hp) + ' / ' + display(bot.maxHp) + ' HP';
-  const activity = bot.state !== 'online' ? '—' :
+function detailsRows(bot) {
+const activity = bot.state !== 'online' ? '—' :
     bot.routeRetryAt > Date.parse(data.time) && bot.goal === 'REST' ? 'รอลองหาเส้นทางใหม่' :
     bot.assistState === 'recovering' && bot.hp < bot.maxHp ? 'พักฟื้นพลังชีวิต' :
     bot.assistState === 'waiting' ? 'รอตัวนำเลือกเป้าหมาย' :
     ['following', 'travelling', 'waiting_for_portal', 'arrived'].includes(bot.assistState) ? (bot.assistSource === 'party_request' ? 'กำลังไปช่วยตามคำขอ' : 'เดินตามตัวนำปาร์ตี้') :
     bot.assistState === 'fighting' ? (bot.assistSource === 'party_request' ? 'ช่วยต่อสู้ตามคำขอ' : 'ช่วยปาร์ตี้ต่อสู้') : display(bot.goal);
-  const rows = [['พฤติกรรม', activity], ['แผนที่', display(bot.map)],
+  const rows = [['สถานะ', display(bot.state)], ['เลเวล', display(bot.level)], ['พลังชีวิต', bot.maxHp ? display(bot.hp) + ' / ' + display(bot.maxHp) : '—'],
+    ['พฤติกรรม', activity], ['แผนที่', display(bot.map)],
     ['ตำแหน่ง X / Z', bot.x === null ? '—' : display(bot.x) + ' / ' + display(bot.z)]];
   if (bot.role === 'fighter') {
     rows.push(['ภารกิจ', [bot.mission, bot.reason].filter(Boolean).map(display).join(' · ') || '—'],
@@ -200,6 +176,10 @@ function updateCard(bot) {
     rows.push(['งานปัจจุบัน', display(bot.merchant.state)], ['เก็บ / คราฟต์', display(bot.merchant.harvested) + ' / ' + display(bot.merchant.crafted)],
       ['ประกาศขาย', display(bot.merchant.open) + ' รายการ']);
   }
+  if (bot.guild) rows.push(['กิลด์', bot.guild]);
+  if (bot.skill?.id) rows.push(['สกิลล่าสุด', display(bot.skill.id) + ' · ' + display(bot.skill.casts) + ' ครั้ง']);
+  if (bot.war?.site) rows.push(['สนามรบ', display(bot.war.site) + ' · ' + display(bot.war.side) + ' · ' + display(bot.war.state)]);
+  if (bot.owned?.length) rows.push(['เมืองที่ครอง', bot.owned.map(display).join(' · ')]);
   rows.push(['ทอง', display(bot.gold)]);
   if (bot.nutrition?.food != null) rows.push(['อาหาร / น้ำ', display(bot.nutrition.food) + ' / ' + display(bot.nutrition.water)]);
   if (bot.plan?.source === 'typhoon') rows.push([
@@ -246,7 +226,128 @@ function updateCard(bot) {
         .map(([name, score]) => display(name) + ' ' + score).join(' · ')]);
     }
   }
-  card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
+    return rows;
+}
+
+function badge() { return node('span', undefined, 'pill'); }
+function setBadge(element, state) {
+  element.dataset.state = state;
+  element.textContent = display(state);
+}
+function setChoices(select, choices) {
+  const value = select.value;
+  const existing = Array.from(select.options, option => option.value);
+  if (existing.length === choices.length + 1 && choices.every(([id, name], index) =>
+    existing[index + 1] === id && select.options[index + 1].textContent === name)) return;
+  const first = select.options[0];
+  select.replaceChildren(first, ...choices.map(([id, name]) => {
+    const option = node('option', name);
+    option.value = id;
+    return option;
+  }));
+  if (choices.some(([id]) => id === value)) select.value = value;
+}
+function groupBots() {
+  const guilds = new Map();
+  const reserves = [], operations = [];
+  for (const bot of data.bots) {
+    if (bot.group === 'reserve') reserves.push(bot);
+    else if (['commander', 'guild'].includes(bot.group) && bot.assignedGuild) {
+      if (!guilds.has(bot.assignedGuild)) guilds.set(bot.assignedGuild, []);
+      guilds.get(bot.assignedGuild).push(bot);
+    } else operations.push(bot);
+  }
+  return { guilds, reserves, operations };
+}
+function openBot(bot) {
+  selectedBot = bot.id;
+  updateDetails();
+  $('bot-dialog').showModal();
+}
+function updateDetails() {
+  const bot = data?.bots.find(entry => entry.id === selectedBot);
+  if (!bot) return;
+  $('bot-title').textContent = bot.name;
+  $('bot-context').textContent = [bot.assignedGuild, bot.role === 'merchant' ? 'พ่อค้า' : display(bot.profession)].filter(Boolean).join(' · ');
+  $('bot-details').replaceChildren(...detailsRows(bot).flatMap(([title, value]) => [node('dt', title), node('dd', value)]));
+}
+function memberRow(bot) {
+  const row = node('button', undefined, 'member-row');
+  row.type = 'button';
+  row.dataset.member = bot.id;
+  row.setAttribute('aria-haspopup', 'dialog');
+  row.addEventListener('click', () => openBot(bot));
+  const level = node('span', bot.level != null ? 'Lv. ' + display(bot.level) : '—', 'row-level');
+  const state = badge();
+  setBadge(state, bot.state);
+  const end = node('span', undefined, 'row-end');
+  end.append(level, state);
+  row.append(node('span', bot.name, 'member-name'), node('span', display(bot.profession), 'row-class'), end);
+  return row;
+}
+function guildCaption(leader) {
+  if (!leader) return 'รอข้อมูลแม่ทัพ';
+  const campaign = leader.campaign;
+  const owned = leader.owned?.map(display) ?? [];
+  const assignment = leader.war?.site ? [display(leader.war.side), display(leader.war.site)].join(' · ') :
+    [campaign?.city, campaign?.phase].filter(Boolean).map(display).join(' · ');
+  return [owned.length ? 'ครอง ' + owned.join(' · ') : null,
+    assignment && (leader.war?.site || !leader.owned?.includes(campaign?.city)) ? assignment : null]
+    .filter(Boolean).join(' | ') || display(leader.mission);
+}
+function renderGuilds(guilds) {
+  const selectedGuild = $('guild-filter').value, profession = $('class-filter').value;
+  const visible = [...guilds].filter(([name, members]) => (!selectedGuild || selectedGuild === name) &&
+    (!profession || members.some(bot => bot.profession === profession)));
+  const focused = document.activeElement?.dataset.member;
+  $('guild-grid').replaceChildren(...visible.map(([name, members]) => {
+    const card = node('article', undefined, 'panel guild-card');
+    card.dataset.guild = name;
+    const heading = node('div', undefined, 'guild-head');
+    const title = node('div');
+    title.append(node('h3', name), node('p', guildCaption(members.find(bot => bot.group === 'commander')), 'guild-caption'));
+    const online = members.filter(bot => bot.state === 'online' && bot.guild === name).length;
+    const count = node('span', online + ' / ' + members.length, 'guild-count');
+    count.setAttribute('aria-label', 'ออนไลน์ ' + online + ' จาก ' + members.length);
+    heading.append(title, count);
+    card.append(heading, ...members.filter(bot => !profession || bot.profession === profession).map(memberRow));
+    return card;
+  }));
+  $('no-guilds').hidden = visible.length > 0;
+  if (focused) Array.from($('guild-grid').querySelectorAll('[data-member]')).find(row => row.dataset.member === focused)?.focus({ preventScroll: true });
+}
+
+function updateCard(bot) {
+  let card = cards.get(bot.id);
+  if (!card) {
+    const panel = node('article', undefined, 'panel operation-card');
+    const heading = node('div', undefined, 'card-head'), state = badge();
+    heading.append(node('h3', bot.name), state);
+    const meta = node('div', undefined, 'operation-meta');
+    const buttons = node('div', undefined, 'card-actions');
+    card = { state, meta, controls: new Map() };
+    const details = node('button', 'รายละเอียด', 'quiet');
+    details.type = 'button';
+    details.addEventListener('click', () => openBot(card.current));
+    buttons.append(details);
+    const offered = bot.role === 'merchant' ? ['restart', 'stop', 'start'] : ['restart', 'destination'];
+    if (bot.controls !== false) for (const action of offered) {
+      const button = node('button', actions[action][0], 'quiet');
+      button.type = 'button';
+      button.addEventListener('click', () => showAction(card.current, action));
+      card.controls.set(action, button);
+      buttons.append(button);
+    }
+    panel.append(heading, meta, buttons);
+    $('bots').append(panel);
+    cards.set(bot.id, card);
+  }
+  card.current = bot;
+  setBadge(card.state, bot.state);
+  card.meta.replaceChildren(
+    node('span', ['Lv. ' + display(bot.level), display(bot.map)].join(' · ')),
+    node('span', display(bot.merchant?.state ?? bot.mission ?? bot.goal)),
+  );
   for (const [action, button] of card.controls) {
     const offline = bot.state === 'offline';
     button.hidden = action === 'start' ? !offline : action === 'stop' ? offline : false;
@@ -255,37 +356,78 @@ function updateCard(bot) {
   }
 }
 
+function warRow(war, finished) {
+  const row = node(finished ? 'li' : 'div', undefined, 'field-row');
+  const combatants = [war.attacker ?? 'ไม่ทราบฝ่ายบุก', war.defender ?? 'ไม่มีฝ่ายตั้งรับ'];
+  const outcome = finished ? (war.winner ? 'ชนะ ' + war.winner : 'ไม่มีผู้ชนะ') + ' · ' + eventDate.format(new Date(war.ended)) :
+    'เริ่ม ' + clock.format(new Date(war.started));
+  row.append(node('span', display(war.site), 'field-main'), node('span', combatants.join(' / ')),
+    node('span', outcome, 'field-outcome'));
+  return row;
+}
+function renderWars(guilds) {
+  const wars = data.wars;
+  const startTimes = [...guilds.values()].flat().map(bot => bot.campaign?.nextAt)
+    .filter(time => Number.isFinite(time) && time > Date.parse(data.time));
+  $('war-next').textContent = startTimes.length ? 'คุ้มครองหมดเร็วที่สุด ' + eventDate.format(new Date(Math.min(...startTimes))) + ' น.' : '';
+  $('war-count').textContent = wars ? display(wars.active.length) : '—';
+  $('war-summary').textContent = wars ? (wars.active.length ? 'กำลังรบ' : 'ยังไม่มีสนามเปิด') : 'รอทะเบียนศึก';
+  $('war-live').replaceChildren(...(wars?.active.length
+    ? wars.active.map(war => warRow(war, false))
+    : [node('p', wars ? 'ขณะนี้ไม่มีศึกเปิด' : 'อ่านทะเบียนศึกไม่ได้')]));
+  $('war-results').replaceChildren(...(wars?.recent.length
+    ? wars.recent.map(war => warRow(war, true))
+    : [node('li', wars ? 'ยังไม่มีผลศึก' : 'อ่านผลศึกไม่ได้', 'empty')]));
+}
+function renderReserves(reserves) {
+  $('reserves').hidden = !reserves.length;
+  $('reserve-count').textContent = reserves.filter(bot => bot.state === 'online').length + ' / ' + reserves.length + ' ออนไลน์';
+  const focused = document.activeElement?.dataset.member;
+  $('reserve-list').replaceChildren(...reserves.map(memberRow));
+  if (focused) Array.from($('reserve-list').querySelectorAll('[data-member]')).find(row => row.dataset.member === focused)?.focus({ preventScroll: true });
+}
+
 function renderEvents() {
   const bots = new Map(data?.bots.map(bot => [bot.id, bot.name]));
-  const events = (data?.events ?? []).filter(row =>
-    (!$('bot-filter').value || row.bot === $('bot-filter').value) &&
-    (!$('category-filter').value || row.category === $('category-filter').value));
+  const bot = $('bot-filter').value, category = $('category-filter').value;
+  const events = (data?.events ?? []).filter(row => (!bot || row.bot === bot) && (!category || row.category === category)).slice(0, 45);
   $('empty').hidden = events.length > 0;
   $('events').replaceChildren(...events.map(row => {
     const item = node('li');
     const time = node('time', eventDate.format(new Date(row.time)));
     time.dateTime = row.time;
-    const details = [row.tool, row.map, row.item, row.mission, row.goal, row.reason, row.destination ?? row.target].filter(Boolean).map(display);
+    const details = [row.tool, row.map ?? row.site, row.item, row.skill, row.side, row.mission, row.goal,
+      row.reason, row.destination ?? row.target].filter(Boolean).map(display);
     if (row.type === 'operator_action' && Object.hasOwn(actions, row.action)) details.push(actions[row.action][0]);
     if (row.outcome) details.push(display(row.outcome));
-    if (row.rank !== null) details.push('+' + row.rank);
-    if (row.quantity !== null) details.push('×' + row.quantity);
-    if (row.price !== null) details.push(display(row.price) + ' ทอง');
-    if (row.success !== null) details.push(row.success ? 'สำเร็จ' : 'ไม่สำเร็จ');
-    const summary = node('div', eventNames[row.type] ?? row.type);
+    if (row.rank != null) details.push('+' + row.rank);
+    if (row.quantity != null) details.push('×' + row.quantity);
+    if (row.price != null) details.push(display(row.price) + ' ทอง');
+    if (row.success != null) details.push(row.success ? 'สำเร็จ' : 'ไม่สำเร็จ');
+    const summary = node('div', eventNames[row.type] ?? display(row.type));
     if (details.length) summary.append(node('small', details.join(' · ')));
-    item.append(time, node('span', bots.get(row.bot), 'event-name'), summary);
+    item.append(time, node('span', bots.get(row.bot) ?? '—', 'event-name'), summary);
     return item;
   }));
 }
 
 function render() {
-  $('online-count').textContent = data.bots.filter(bot => bot.state === 'online').length + ' / ' + data.bots.length;
+  const { guilds, reserves, operations } = groupBots();
+  const field = [...guilds.values()].flat();
+  const online = field.filter(bot => bot.state === 'online' && bot.guild === bot.assignedGuild);
+  $('online-count').textContent = online.length + ' / ' + field.length;
+  $('guild-count').textContent = guilds.size ? guilds.size + ' กิลด์' : 'รอข้อมูลกิลด์';
   $('game-state').textContent = data.game ? 'ตอบสนอง' : 'ไม่ตอบสนอง';
-  $('party-state').textContent = display(data.team.state);
-  $('party-detail').textContent = data.team.hunter ? 'นำทีม ' + data.team.hunter : '';
+  $('party-state').textContent = display(data.team?.state);
   $('updated').textContent = clock.format(new Date(data.time));
-  data.bots.forEach(updateCard);
+  setChoices($('guild-filter'), [...guilds.keys()].map(name => [name, name]));
+  setChoices($('class-filter'), [...new Set(field.map(bot => bot.profession).filter(Boolean))].map(id => [id, display(id)]));
+  setChoices($('bot-filter'), data.bots.map(bot => [bot.id, bot.name]));
+  renderWars(guilds);
+  renderGuilds(guilds);
+  operations.forEach(updateCard);
+  renderReserves(reserves);
+  if ($('bot-dialog').open) updateDetails();
   renderEvents();
 }
 
@@ -294,7 +436,13 @@ function lock() {
   activeRead?.abort();
   key = '';
   data = undefined;
-  cards.clear();
+    dirtyRead = false;
+  $('bot-dialog').close();
+  $('action-dialog').close();
+  selectedBot = null;
+  for (const id of ['guild-grid', 'reserve-list', 'war-results', 'war-live']) $(id).replaceChildren();
+  for (const id of ['guild-filter', 'class-filter', 'bot-filter']) setChoices($(id), []);
+cards.clear();
   $('bots').replaceChildren();
   $('events').replaceChildren();
   $('dashboard').hidden = $('lock').hidden = $('refresh').hidden = true;
@@ -318,6 +466,7 @@ async function refresh() {
     $('dashboard').hidden = $('lock').hidden = $('refresh').hidden = false;
     $('locked').hidden = true;
     $('key').value = '';
+    if (dirtyRead) { announce(''); dirtyRead = false; }
     connection('online', 'เชื่อมต่อ VPS');
     render();
   } catch (error) {
@@ -325,6 +474,7 @@ async function refresh() {
     if (error.message === 'invalid_key') lock();
     else {
       if (!data) key = '';
+      dirtyRead = true;
       connection(data ? 'stale' : 'offline', data ? 'ข้อมูลค้าง' : 'เชื่อมต่อไม่ได้');
     }
     announce(errorNames[error.message] ?? errorNames.service_unavailable);
@@ -350,6 +500,16 @@ $('login').addEventListener('submit', event => {
 $('refresh').addEventListener('click', () => { announce(''); void refresh(); });
 $('lock').addEventListener('click', lock);
 $('bot-filter').addEventListener('change', renderEvents);
+$('guild-filter').addEventListener('change', () => data && renderGuilds(groupBots().guilds));
+$('class-filter').addEventListener('change', () => data && renderGuilds(groupBots().guilds));
+$('close-bot').addEventListener('click', () => $('bot-dialog').close());
+$('filter-by-bot').addEventListener('click', () => {
+  if (selectedBot) $('bot-filter').value = selectedBot;
+  $('bot-dialog').close();
+  renderEvents();
+  $('activity').scrollIntoView();
+  $('bot-filter').focus({ preventScroll: true });
+});
 $('category-filter').addEventListener('change', renderEvents);
 $('cancel-action').addEventListener('click', () => $('action-dialog').close());
 $('action-form').addEventListener('submit', async event => {

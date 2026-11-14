@@ -4,7 +4,7 @@ import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { dashboardServer, recentEvents, validateCommand } from './dashboard.mjs';
+import { battleReader, botRoster, dashboardServer, recentEvents, validateCommand } from './dashboard.mjs';
 
 test('only supported operators and destinations can become commands', () => {
   for (const command of [
@@ -85,4 +85,50 @@ test('overview, CORS and commands are authenticated, filtered and serialized', a
     assert.equal((await pending).status, 200);
     assert.deepEqual(calls, [{ bot: 'first', action: 'restart' }]);
   } finally { allowFinish(); await new Promise(resolve => server.close(resolve)); }
+});
+
+test('fleet and war snapshots extend the authenticated dashboard without creating remote controls', async () => {
+  const temp = await mkdtemp(join(tmpdir(), 'montra-dashboard-fleet-'));
+  const key = randomBytes(32).toString('hex');
+  const origin = 'https://example.test';
+  let service;
+  try {
+    await writeFile(join(temp, 'fighter-role.mjs'), [
+      "export const cityLeaders = [{name:'leader',guild:'guild',profession:'phutthaisawan',port:34786,profile:'instances/leader/runtime.env'}];",
+      "export const professionBots = [{name:'mage',guild:'guild',profession:'seer',port:34807,profile:'instances/mage/runtime.env'}];",
+      "export const reserveFighters = [{name:'reserve',guild:'guild',port:34791,profile:'instances/reserve/runtime.env'}];",
+    ].join('\n'));
+    const roster = await botRoster(temp);
+    assert.equal(roster.length, 6);
+    assert.deepEqual(roster.slice(3).map(bot => bot.group), ['commander', 'guild', 'reserve']);
+    const { DatabaseSync } = await import('node:sqlite');
+    const dbPath = join(temp, 'guilds.sqlite');
+    const db = new DatabaseSync(dbPath);
+    db.exec("CREATE TABLE guilds(id TEXT,name TEXT); CREATE TABLE territory_battles(site TEXT,attacker TEXT,defender TEXT,winner TEXT,started INTEGER,ended INTEGER,progress INTEGER);");
+    db.exec("INSERT INTO guilds VALUES ('private-id','guild'),('opponent-id','opponent'); INSERT INTO territory_battles VALUES('moon_pass','private-id','opponent-id',NULL,10,NULL,4),('river_watch','opponent-id',NULL,'opponent-id',1,5,9);");
+    db.close();
+    const readBattles = await battleReader(dbPath);
+    service = dashboardServer({ root: temp, key, origin, roster, readBattles, readEvents: async () => [],
+      readStatus: async port => port === 34807
+        ? { raw: { service: 'montra-bot-v1', name: 'mage', guild: { id: 'private-id', name: 'guild' },
+          sessionId: 'private-session', state: 'online', profession: { path: 'seer', casts: 2, lastCast: { id: 'seer_buffalo' } },
+          guildWar: { side: 'attack', site: 'moon_pass', state: 'fighting' } } }
+        : { state: 'offline' } });
+    await new Promise(resolve => service.listen(0, '127.0.0.1', resolve));
+    const url = 'http://127.0.0.1:' + service.address().port;
+    assert.equal((await fetch(url + '/overview')).status, 401);
+    const response = await fetch(url + '/overview', { headers: { Authorization: 'Bearer ' + key, Origin: origin } });
+    const payload = await response.json();
+    assert.equal(payload.wars.active[0].attacker, 'guild');
+    assert.equal(payload.wars.recent[0].winner, 'opponent');
+    const mage = payload.bots.find(bot => bot.id === 'bot-34807');
+    assert.deepEqual(mage.skill, { casts: 2, id: 'seer_buffalo' });
+    assert.equal(mage.war.side, 'attack');
+    assert.equal(mage.controls, false);
+    assert.equal(validateCommand({ bot: 'bot-34807', action: 'restart' }), null);
+    assert(!JSON.stringify(payload).includes('private'));
+  } finally {
+    if (service?.listening) await new Promise(resolve => service.close(resolve));
+    await rm(temp, { recursive: true, force: true });
+  }
 });

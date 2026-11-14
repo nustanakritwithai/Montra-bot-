@@ -2,18 +2,32 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import { appendFile, open, readFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { setTimeout as delay } from 'node:timers/promises';
 
-const bots = {
+const controls = {
   first: { name: 'บอตทดลอง', role: 'fighter', port: 34781, peer: 34782, log: 'bot.log' },
   second: { name: 'บอตทดลอง 2', role: 'fighter', port: 34782, peer: 34781,
     log: 'instances/bot2/bot.log', profile: 'instances/bot2/runtime.env' },
   merchant: { name: 'บอตพ่อค้า', role: 'merchant', port: 34784,
     log: 'instances/merchant/bot.log', profile: 'instances/merchant/runtime.env' },
 };
+export async function botRoster(root) {
+  const { cityLeaders, professionBots, reserveFighters } = await import(pathToFileURL(resolve(root, 'fighter-role.mjs')).href);
+  const map = (bot, group) => ({ id: 'bot-' + bot.port, name: bot.name, role: 'fighter', port: bot.port,
+    guild: bot.guild, profession: bot.profession ?? 'phutthaisawan', group, log: join(dirname(bot.profile), 'bot.log') });
+  return [
+    ...operations,
+    ...cityLeaders.map(bot => map(bot, 'commander')),
+    ...professionBots.map(bot => map(bot, 'guild')),
+    ...reserveFighters.map(bot => map(bot, 'reserve')),
+  ];
+}
+const operations = Object.entries(controls).map(([id, bot]) => ({ id, ...bot, group: 'operations' }));
 const categories = {
+  guild_war_joined: 'guild', profession_skill_used: 'combat', city_ownership_confirmed: 'guild',
+  merchant_level_observed: 'trade', merchant_quality_improved: 'trade',
   joined: 'connection', connection_error: 'connection', stopped: 'connection',
   mission_selected: 'decision', ai_decision: 'decision', goal: 'decision',
   portal_attempt: 'travel', destination: 'travel', destination_arrived: 'travel',
@@ -40,12 +54,19 @@ const text = value => typeof value === 'string' ? value.slice(0, 90) : null;
 const loopback = port => 'http://127.0.0.1:' + port;
 const runningStates = new Set(['online', 'starting', 'reconnecting', 'stopping', 'failed']);
 
-export function publicBot(id, raw, state) {
-  const { name, role } = bots[id];
+export function publicBot(entry, raw, state) {
+  const { id, name, role, group, guild, profession } = entry;
   const s = raw ?? {};
   const forge = s.forge;
   const merchant = s.merchant;
-  return { id, name, role, state, goal: label(s.goal), map: label(s.map),
+  return { id, name, role, group, state, guild: text(s.guild?.name), assignedGuild: guild ?? null,
+    profession: label(s.profession?.path ?? s.sword?.path ?? profession),
+    skill: s.profession ? { id: label(s.profession.lastCast?.id), casts: count(s.profession.casts) } : null,
+    campaign: s.cityCampaign ? { city: label(s.cityCampaign.city), state: label(s.cityCampaign.state),
+      phase: label(s.cityCampaign.phase), nextAt: count(s.cityCampaign.nextChallengeAt) } : null,
+    war: s.guildWar ? { site: label(s.guildWar.site), side: label(s.guildWar.side), state: label(s.guildWar.state),
+      hits: count(s.guildWar.hits), joined: count(s.guildWar.joined) } : null,
+    owned: toolLabels(s.territory?.owned), controls: Object.hasOwn(controls, id), goal: label(s.goal), map: label(s.map),
     level: count(s.level), experience: count(s.experience), xpToNext: count(s.training?.xpToNext),
     hp: count(s.hp), maxHp: count(s.maxHp), x: count(s.x), z: count(s.z),
     hits: count(s.hits), kills: count(s.kills), retries: count(s.retries),
@@ -83,7 +104,7 @@ export function publicBot(id, raw, state) {
     } : null,
     nutrition: s.nutrition ? { food: count(s.nutrition.food), water: count(s.nutrition.water),
       collected: count(s.nutrition.collected), consumed: count(s.nutrition.consumed), cooked: count(s.nutrition.cooked) } : null,
-    camp: text(s.training?.camp?.name), gold: count(s.wealth?.gold ?? forge?.gold),
+    camp: text(s.training?.camp?.name), gold: count(merchant?.gold ?? s.wealth?.gold ?? forge?.gold),
     freeSlots: count(s.wealth?.freeSlots), party: Boolean(s.party?.partyId),
     following: text(s.partyAssist?.partner), assistState: label(s.partyAssist?.state), assistSource: label(s.partyAssist?.source),
     routeRetryAt: count(s.routeRetryAt), guildRole: label(s.guild?.role),
@@ -113,12 +134,13 @@ export async function recentEvents(file, bot) {
       let row;
       try { row = JSON.parse(line); } catch { continue; }
       if (!row || !Object.hasOwn(categories, row.event) || !Number.isFinite(Date.parse(row.time))) continue;
-      const eventBot = bot ?? (typeof row.bot === 'string' && Object.hasOwn(bots, row.bot) ? row.bot : null);
+      const eventBot = bot ?? (typeof row.bot === 'string' && Object.hasOwn(controls, row.bot) ? row.bot : null);
       if (!eventBot) continue;
       result.push({ bot: eventBot, time: row.time, type: row.event, category: categories[row.event],
         map: label(row.map ?? row.mapId), item: label(row.itemId ?? row.item), goal: label(row.goal),
         mission: label(row.mission), reason: row.event === 'mission_selected' ? label(row.reason) : null,
         target: label(row.target), destination: label(row.destination), action: label(row.action),
+        site: label(row.site), skill: label(row.skill), side: label(row.side),
         tool: label(row.tool), outcome: label(row.outcome), step: count(row.step),
         rank: count(row.rank), quantity: count(row.quantity ?? row.stock),
         price: count(row.price ?? row.cost), success: typeof row.success === 'boolean' ? row.success : null });
@@ -155,15 +177,15 @@ async function readCommand(request) {
 }
 
 export function validateCommand(command) {
-  if (!command || typeof command.bot !== 'string' || !Object.hasOwn(bots, command.bot)) return null;
+  if (!command || typeof command.bot !== 'string' || !Object.hasOwn(controls, command.bot)) return null;
   const { bot, action } = command;
-  if (action === 'destination' && bots[bot].role === 'fighter' && Object.keys(command).length === 5 &&
+  if (action === 'destination' && controls[bot].role === 'fighter' && Object.keys(command).length === 5 &&
       typeof command.mapId === 'string' && gameId.test(command.mapId) &&
       [command.x, command.z].every(value => Number.isFinite(value) && Math.abs(value) <= 2000)) {
     return { bot, action, mapId: command.mapId, x: command.x, z: command.z };
   }
   if (Object.keys(command).length !== 2) return null;
-  if (action === 'restart' || bots[bot].role === 'merchant' && ['start', 'stop'].includes(action)) return { bot, action };
+  if (action === 'restart' || controls[bot].role === 'merchant' && ['start', 'stop'].includes(action)) return { bot, action };
   return null;
 }
 
@@ -190,7 +212,7 @@ async function waitForBot(bot, online) {
 }
 
 async function execute(root, command) {
-  const bot = bots[command.bot];
+  const bot = controls[command.bot];
   if (command.action === 'destination') {
     const { mapId, x, z } = command;
     const response = await fetch(loopback(bot.port) + '/destination', {
@@ -220,7 +242,7 @@ async function execute(root, command) {
   return 'online';
 }
 
-export function dashboardServer({ root, key, origin, auditLog, run = execute, readStatus = statusAt, readEvents = recentEvents }) {
+export function dashboardServer({ root, key, origin, auditLog, run = execute, readStatus = statusAt, readEvents = recentEvents, roster = operations, readBattles = async () => null }) {
   if (!keyPattern.test(key) || !origin || new URL(origin).origin !== origin) throw new Error('invalid_dashboard_config');
   const expected = digest(key);
   let running = false;
@@ -229,25 +251,26 @@ export function dashboardServer({ root, key, origin, auditLog, run = execute, re
   let inFlight;
 
   async function readDashboard() {
-    const [states, team, game, events] = await Promise.all([
-      Promise.all(Object.entries(bots).map(async ([id, bot]) => {
+    const [states, team, game, events, wars] = await Promise.all([
+      Promise.all(roster.map(async bot => {
         const { raw, state } = await readStatus(bot.port);
-        const valid = raw?.service === 'montra-bot-v1';
-        return publicBot(id, valid ? raw : null,
+        const valid = raw?.service === 'montra-bot-v1' && (!raw.name || raw.name === bot.name);
+        return publicBot(bot, valid ? raw : null,
           valid && runningStates.has(raw.state) ? raw.state : (state ?? 'unavailable'));
       })),
       readStatus(34783),
       fetch(loopback(4108) + '/hi', { signal: AbortSignal.timeout(2000) })
         .then(response => response.ok).catch(() => false),
       Promise.all([
-        ...Object.entries(bots).map(([id, bot]) => readEvents(join(root, bot.log), id).catch(() => [])),
+        ...roster.map(bot => readEvents(join(root, bot.log), bot.id).then(rows => rows.slice(0, 12)).catch(() => [])),
         ...(auditLog ? [readEvents(auditLog, null).catch(() => [])] : []),
       ]),
+      Promise.resolve().then(readBattles).catch(() => null),
     ]);
-    return { time: new Date().toISOString(), game, bots: states,
+    return { time: new Date().toISOString(), game, bots: states, wars,
       team: { state: label(team.raw?.state) ?? team.state ?? 'unavailable',
         hunter: text(team.raw?.hunter), support: text(team.raw?.support), targetLevel: count(team.raw?.targetLevel) },
-      events: events.flat().sort((a,b) => Date.parse(b.time) - Date.parse(a.time)).slice(0, 65) };
+      events: events.flat().sort((a,b) => Date.parse(b.time) - Date.parse(a.time)) };
   }
 
   async function cachedDashboard() {
@@ -302,8 +325,27 @@ export function dashboardServer({ root, key, origin, auditLog, run = execute, re
   });
 }
 
+export async function battleReader(file) {
+  const { DatabaseSync } = await import('node:sqlite');
+  const format = row => ({ site: label(row.site), attacker: text(row.attacker), defender: text(row.defender),
+    winner: text(row.winner), started: count(row.started), ended: count(row.ended), progress: count(row.progress) });
+  return () => {
+    const db = new DatabaseSync(file, { readOnly: true });
+    try {
+      const select = 'SELECT b.site, a.name attacker, d.name defender, w.name winner, b.started, b.ended, b.progress ' +
+        'FROM territory_battles b LEFT JOIN guilds a ON a.id=b.attacker LEFT JOIN guilds d ON d.id=b.defender LEFT JOIN guilds w ON w.id=b.winner';
+      return {
+        active: db.prepare(select + ' WHERE b.ended IS NULL ORDER BY b.started DESC').all().map(format),
+        recent: db.prepare(select + ' WHERE b.ended IS NOT NULL ORDER BY b.ended DESC LIMIT 8').all().map(format),
+      };
+    } finally { db.close(); }
+  };
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   const configPath = process.argv[2] ?? fileURLToPath(new URL('./dashboard.local.json', import.meta.url));
   const config = JSON.parse((await readFile(configPath, 'utf8')).replace(/^\uFEFF/, ''));
-  dashboardServer(config).listen(34785, '127.0.0.1', () => console.log('Montra bot dashboard listening on 34785'));
+  const roster = await botRoster(config.root);
+  const readBattles = await battleReader(config.warDatabase ?? 'C:/Montra/online-server/data/characters/guilds.sqlite');
+  dashboardServer({ ...config, roster, readBattles }).listen(34785, '127.0.0.1', () => console.log('Montra bot dashboard listening on 34785'));
 }

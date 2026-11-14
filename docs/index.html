@@ -12,23 +12,24 @@
   <script type="module" src="./dashboard.js"></script>
 </head>
 <body>
+  <a class="skip" href="#main">ข้ามไปที่เนื้อหา</a>
   <header class="top">
     <div class="frame top-inner">
       <a class="brand" href="./" aria-label="หน้าหลัก Montra Bot"><span class="brand-mark" aria-hidden="true">M</span><span>MONTRA <b>BOT</b></span></a>
       <div class="top-actions">
         <span id="connection" class="pill" role="status">ยังไม่เชื่อมต่อ</span>
+        <button id="refresh" type="button" class="quiet" hidden>อัปเดต</button>
         <button id="lock" type="button" class="quiet" hidden>ล็อก</button>
       </div>
     </div>
   </header>
-  <main class="frame">
+  <main id="main" class="frame">
     <section class="page-heading">
-      <div><h1>ศูนย์ควบคุมบอต</h1><p>ดูสถานะและพฤติกรรมของบอตในเกม Montra</p></div>
-      <button id="refresh" type="button" class="quiet" hidden>อัปเดตตอนนี้</button>
+      <div><h1>ศูนย์ควบคุมบอต</h1><p>ติดตามกิลด์ ศึกชิงเมือง และการทำงานของบอตใน Montra</p></div>
     </section>
     <section id="locked" class="login panel" aria-labelledby="login-title">
-      <h2 id="login-title">เชื่อมต่อกับ VPS</h2>
-      <p>กรอกคีย์แดชบอร์ดเพื่อดูข้อมูลสดและส่งคำสั่งไปยังบอต</p>
+      <h2 id="login-title">เข้าแดชบอร์ด</h2>
+      <p>ใช้คีย์แดชบอร์ดเพื่อเปิดข้อมูลสดจาก VPS</p>
       <form id="login">
         <label for="key">คีย์แดชบอร์ด</label>
         <div class="login-input"><input id="key" type="password" name="key" required autocomplete="off" autocapitalize="none" spellcheck="false" maxlength="64" placeholder="คีย์ 64 ตัวอักษร"><button id="unlock" type="submit" class="primary">เชื่อมต่อ</button></div>
@@ -36,22 +37,52 @@
     </section>
     <p id="notice" class="notice" role="status" hidden></p>
     <div id="dashboard" hidden>
-      <section class="summary" aria-label="สรุปสถานะ">
-        <div class="panel summary-cell"><span>บอตออนไลน์</span><strong id="online-count">—</strong></div>
-        <div class="panel summary-cell"><span>เซิร์ฟเวอร์เกม</span><strong id="game-state">—</strong></div>
-        <div class="panel summary-cell"><span>ปาร์ตี้เก็บเลเวล</span><strong id="party-state">—</strong><small id="party-detail"></small></div>
-        <div class="panel summary-cell"><span>ข้อมูลล่าสุด</span><strong id="updated">—</strong><small>เวลาไทย</small></div>
+      <section class="summary panel" aria-label="สรุปสถานะ">
+        <div class="summary-cell"><span>ทีมกิลด์ออนไลน์</span><strong id="online-count">—</strong><small id="guild-count"></small></div>
+        <div class="summary-cell"><span>ศึกที่เปิดอยู่</span><strong id="war-count">—</strong><small id="war-summary"></small></div>
+        <div class="summary-cell"><span>เซิร์ฟเวอร์เกม</span><strong id="game-state">—</strong><small id="party-state"></small></div>
+        <div class="summary-cell"><span>อัปเดตล่าสุด</span><strong id="updated">—</strong><small>เวลาไทย</small></div>
       </section>
-      <section aria-labelledby="bots-title">
-        <div class="section-head"><h2 id="bots-title">บอตทั้งสามตัว</h2></div>
-        <div id="bots" class="bots"></div>
+      <nav class="jump" aria-label="ส่วนของแดชบอร์ด">
+        <a href="#wars">ศึกเมือง</a><a href="#guilds">กิลด์</a><a href="#operations">บอตหลัก</a><a href="#reserves">สำรอง</a><a href="#activity">เหตุการณ์</a>
+      </nav>
+      <section id="wars" class="war-section" aria-labelledby="wars-title">
+        <div class="section-head">
+          <div><h2 id="wars-title">ศึกชิงเมือง</h2><p id="war-next"></p></div>
+        </div>
+        <div id="war-live" class="war-live panel"></div>
+        <details id="war-history" class="panel war-history">
+          <summary>ผลศึกล่าสุด</summary>
+          <ol id="war-results" class="war-results"></ol>
+        </details>
       </section>
-      <section class="panel activity" aria-labelledby="activity-title">
-        <div class="section-head activity-head">
-          <h2 id="activity-title">พฤติกรรมล่าสุด</h2>
+      <section id="guilds" aria-labelledby="guilds-title">
+        <div class="section-head">
+          <div><h2 id="guilds-title">กิลด์ภาคสนาม</h2><p>แม่ทัพสายดาบคู่และนักรบประจำอาชีพ</p></div>
           <div class="filters">
-            <label><span class="sr-only">กรองตามบอต</span><select id="bot-filter"><option value="">ทุกบอต</option><option value="first">บอตทดลอง</option><option value="second">บอตทดลอง 2</option><option value="merchant">บอตพ่อค้า</option></select></label>
-            <label><span class="sr-only">กรองตามประเภท</span><select id="category-filter"><option value="">ทุกเหตุการณ์</option><option value="decision">การตัดสินใจ</option><option value="travel">การเดินทาง</option><option value="combat">การต่อสู้</option><option value="equipment">อุปกรณ์และยา</option><option value="trade">การค้า</option><option value="guild">กิลด์</option><option value="connection">การเชื่อมต่อ</option><option value="management">คำสั่งจากแดชบอร์ด</option></select></label>
+            <label>กิลด์<select id="guild-filter"><option value="">ทุกกิลด์</option></select></label>
+            <label>อาชีพ<select id="class-filter"><option value="">ทุกอาชีพ</option></select></label>
+          </div>
+        </div>
+        <div id="guild-grid" class="guild-grid"></div>
+        <p id="no-guilds" class="empty panel" hidden>ไม่มีบอตตรงกับตัวกรอง</p>
+      </section>
+      <section id="operations" aria-labelledby="operations-title">
+        <div class="section-head"><h2 id="operations-title">บอตหลัก</h2></div>
+        <div id="bots" class="operation-grid"></div>
+      </section>
+      <section id="reserves" aria-labelledby="reserves-title">
+        <details class="panel reserve-panel">
+          <summary><span id="reserves-title">กำลังสำรอง</span><small id="reserve-count"></small></summary>
+          <div id="reserve-list" class="reserve-list"></div>
+        </details>
+      </section>
+      <section id="activity" class="panel activity" aria-labelledby="activity-title">
+        <div class="section-head">
+          <div><h2 id="activity-title">เหตุการณ์ล่าสุด</h2><p>ผลการตัดสินใจ การเดินทาง และการต่อสู้</p></div>
+          <div class="filters">
+            <label>ตัวละคร<select id="bot-filter"><option value="">ทุกบอต</option></select></label>
+            <label>ประเภท<select id="category-filter"><option value="">ทุกเหตุการณ์</option><option value="decision">การตัดสินใจ</option><option value="travel">การเดินทาง</option><option value="combat">การต่อสู้</option><option value="equipment">อุปกรณ์และยา</option><option value="trade">การค้า</option><option value="guild">กิลด์</option><option value="connection">การเชื่อมต่อ</option><option value="management">คำสั่งจากแดชบอร์ด</option></select></label>
           </div>
         </div>
         <ol id="events" class="events"></ol>
@@ -59,6 +90,11 @@
       </section>
     </div>
   </main>
+  <dialog id="bot-dialog" aria-labelledby="bot-title">
+    <div class="dialog-heading"><div><p id="bot-context"></p><h2 id="bot-title"></h2></div><button id="close-bot" type="button" class="quiet">ปิด</button></div>
+    <dl id="bot-details" class="details"></dl>
+    <button id="filter-by-bot" class="quiet" type="button">ดูเหตุการณ์ของบอตนี้</button>
+  </dialog>
   <dialog id="action-dialog" aria-labelledby="action-title">
     <form id="action-form" method="dialog">
       <h2 id="action-title"></h2>
