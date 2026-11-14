@@ -34,6 +34,10 @@ const stateNames = {
   md_list: 'ดูรายชื่อไฟล์', md_read: 'อ่าน Markdown', md_create: 'สร้าง Markdown', md_edit: 'แก้ Markdown',
   skill_list: 'ดูคลังทักษะ', skill_load: 'เปิดทักษะ', skill_save: 'บันทึกทักษะ',
   kama: 'กามตัณหา', bhava: 'ภวตัณหา', vibhava: 'วิภวตัณหา',
+  soka: 'โสกะ', parideva: 'ปริเทวะ', dukkha: 'ทุกขะ', domanassa: 'โทมนัส', upayasa: 'อุปายาส',
+  observing: 'กำลังประเมินผล', seeking_relief: 'กำลังเลือกทางคลายทุกข์', waiting_for_option: 'รอเงื่อนไขในเกม',
+  reentered: 'เริ่มรอบใหม่แล้ว', activity_ended: 'การกระทำจบลง', conditions_lost: 'ปัจจัยให้ทำต่อหมดลง',
+  repeated_obstacle: 'พบอุปสรรคซ้ำ', typhoon_cycle_reentered: 'กลับเข้าสู่วงจรตัณหา',
   pleasant: 'สุข', painful: 'ทุกข์', neutral: 'เฉย ๆ', selected: 'เลือกแล้ว', executing: 'กำลังทำ',
   completed: 'ทำสำเร็จ', interrupted: 'ยุติการกระทำ', blocked: 'ทำต่อไม่ได้',
   interrupted_for_safety: 'พักแผนเพื่อความปลอดภัย', profitable_trade: 'มีสินค้าที่ขายได้กำไร',
@@ -233,6 +237,13 @@ function updateCard(bot) {
     if (feeling) {
       rows.push(['เวทนาปัจจุบัน', [feeling.kind, ...feeling.reasons].filter(Boolean).map(display).join(' · ')]);
       rows.push(['ผลการกระทำ', [feeling.state, feeling.outcome].filter(Boolean).map(display).join(' · ')]);
+    }
+    const cycle = bot.tools.cycle;
+    if (cycle) {
+      rows.push(['วงจรหลังจบการกระทำ', [cycle.action?.tool, cycle.distress, cycle.nextDrive, cycle.state]
+        .filter(Boolean).map(display).join(' → ')]);
+      if (cycle.distress) rows.push(['คะแนนทุกข์หลังจบงาน', Object.entries(cycle.scores)
+        .map(([name, score]) => display(name) + ' ' + score).join(' · ')]);
     }
   }
   card.details.replaceChildren(...rows.flatMap(([title, value]) => [node('dt', title), node('dd', value)]));

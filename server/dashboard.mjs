@@ -27,6 +27,7 @@ const categories = {
   party_help_requested: 'combat', party_help_started: 'combat', party_help_finished: 'combat',
   typhoon_plan_selected: 'decision', typhoon_plan_applied: 'decision', typhoon_plan_unavailable: 'decision',
   typhoon_plan_outcome: 'decision', typhoon_tool_result: 'decision', nutrition_result: 'decision',
+  typhoon_cycle_reentered: 'decision',
 };
 const keyPattern = /^[a-f0-9]{64}$/;
 const gameId = /^[a-zA-Z0-9_-]{1,80}$/;
@@ -74,6 +75,11 @@ export function publicBot(id, raw, state) {
       ...(s.agentTools.feeling ? { feeling: { kind: label(s.agentTools.feeling.kind),
         state: label(s.agentTools.feeling.state), outcome: label(s.agentTools.feeling.outcome),
         reasons: toolLabels(s.agentTools.feeling.reasons) } } : {}),
+      ...(s.agentTools.cycle ? { cycle: { state: label(s.agentTools.cycle.state),
+        action: toolResult(s.agentTools.cycle.action), distress: label(s.agentTools.cycle.distress),
+        scores: Object.fromEntries(['soka', 'parideva', 'dukkha', 'domanassa', 'upayasa']
+          .map(name => [name, count(s.agentTools.cycle.scores?.[name])])),
+        reasons: toolLabels(s.agentTools.cycle.reasons), nextDrive: label(s.agentTools.cycle.nextDrive) } } : {}),
     } : null,
     nutrition: s.nutrition ? { food: count(s.nutrition.food), water: count(s.nutrition.water),
       collected: count(s.nutrition.collected), consumed: count(s.nutrition.consumed), cooked: count(s.nutrition.cooked) } : null,

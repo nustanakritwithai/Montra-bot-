@@ -48,7 +48,10 @@ test('overview, CORS and commands are authenticated, filtered and serialized', a
       ? { raw: { service: 'montra-bot-v1', state: 'online', level: 61, sessionId: 'private',
         authentication: { token: 'private' }, plan: { tool: 'hunt_camp' },
         agentTools: { ready: { hunt_camp: 2, 'private/': 1 }, automatic: ['navigate_rrt'],
-          lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10, payload: 'private' } } } }
+          lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10, payload: 'private' },
+          cycle: { state: 'reentered', action: { tool: 'hunt_camp', option: 'private', outcome: 'unavailable', at: 20 },
+            distress: 'dukkha', nextDrive: 'vibhava', scores: { soka: 58, parideva: 0, dukkha: 92, domanassa: 62, upayasa: 0 },
+            reasons: ['critical_hp', 'private/'] } } } }
       : { state: 'offline' },
     run: async (_root, command) => { calls.push(command); await hold; return 'online'; },
   });
@@ -69,7 +72,10 @@ test('overview, CORS and commands are authenticated, filtered and serialized', a
     assert.equal(snapshot.bots[0].level, 61);
     assert.equal(snapshot.bots[0].plan.tool, 'hunt_camp');
     assert.deepEqual(snapshot.bots[0].tools, { ready: ['hunt_camp'], automatic: ['navigate_rrt'],
-      lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10 } });
+      lastResult: { tool: 'use_potion', outcome: 'potion_used', at: 10 },
+      cycle: { state: 'reentered', action: { tool: 'hunt_camp', outcome: 'unavailable', at: 20 },
+        distress: 'dukkha', nextDrive: 'vibhava', scores: { soka: 58, parideva: 0, dukkha: 92, domanassa: 62, upayasa: 0 },
+        reasons: ['critical_hp'] } });
     assert(!JSON.stringify(snapshot).includes('private'));
     assert.equal((await post({ bot: 'first', action: 'stop' })).status, 400);
     const pending = post({ bot: 'first', action: 'restart' });
